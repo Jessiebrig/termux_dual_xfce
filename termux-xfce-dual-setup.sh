@@ -140,12 +140,13 @@ main() {
     echo ""
     msg warn "Termux-X11 app required: https://github.com/termux/termux-x11/releases"
     echo ""
-    read -p "Press Enter to continue or Ctrl+C to cancel..."
-    echo ""
+    echo "Press Enter to continue or Ctrl+C to cancel..." > /dev/tty
+    read -r < /dev/tty
     
     # Get username
     echo ""
-    read -p "Enter username for Debian proot: " username
+    echo -n "Enter username for Debian proot: " > /dev/tty
+    read username < /dev/tty
     if [[ -z "$username" ]]; then
         msg error "Username cannot be empty"
         exit 1
@@ -316,7 +317,8 @@ fi
 echo "Available Debian applications:"
 ls "$debian_apps"/*.desktop 2>/dev/null | nl
 
-read -p "Enter number to copy (or 'all' for all): " choice
+echo -n "Enter number to copy (or 'all' for all): " > /dev/tty
+read choice < /dev/tty
 
 if [[ "$choice" == "all" ]]; then
     cp "$debian_apps"/*.desktop "$termux_apps/"
@@ -378,7 +380,8 @@ while true; do
     echo ""
     echo "  ${YELLOW}0${NC} - Exit"
     echo ""
-    read -p "Select option [0-8]: " choice
+    echo -n "Select option [0-8]: " > /dev/tty
+    read choice < /dev/tty
     
     case $choice in
         1)
@@ -401,39 +404,47 @@ while true; do
             ;;
         4)
             echo ""
-            read -p "Enter command to run: " cmd
+            echo -n "Enter command to run: " > /dev/tty
+            read cmd < /dev/tty
             if [[ -n "$cmd" ]]; then
                 prun $cmd
             fi
-            read -p "Press Enter to continue..."
+            echo "Press Enter to continue..." > /dev/tty
+            read -r < /dev/tty
             ;;
         5)
             echo ""
-            read -p "Enter command to run: " cmd
+            echo -n "Enter command to run: " > /dev/tty
+            read cmd < /dev/tty
             if [[ -n "$cmd" ]]; then
                 zrun $cmd
             fi
-            read -p "Press Enter to continue..."
+            echo "Press Enter to continue..." > /dev/tty
+            read -r < /dev/tty
             ;;
         6)
             echo ""
-            read -p "Enter command to run: " cmd
+            echo -n "Enter command to run: " > /dev/tty
+            read cmd < /dev/tty
             if [[ -n "$cmd" ]]; then
                 zrunhud $cmd
             fi
-            read -p "Press Enter to continue..."
+            echo "Press Enter to continue..." > /dev/tty
+            read -r < /dev/tty
             ;;
         7)
             echo ""
             cp2menu
-            read -p "Press Enter to continue..."
+            echo "Press Enter to continue..." > /dev/tty
+            read -r < /dev/tty
             ;;
         8)
             echo ""
             echo "${YELLOW}Killing Termux-X11...${NC}"
             kill_termux_x11
             echo "Done."
-            read -p "Press Enter to continue..."
+            echo "Press Enter to continue..." > /dev/tty
+            read -r < /dev/tty
             ;;
         0)
             echo ""
