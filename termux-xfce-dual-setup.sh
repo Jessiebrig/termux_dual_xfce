@@ -12,7 +12,13 @@ C_RESET='\033[0m'
 
 # Log file
 LOG_FILE="$HOME/xfce_install.log"
+echo "=== Installation started at $(date) ===" >> "$LOG_FILE"
 exec 2>>"$LOG_FILE"
+
+# Logging function
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
+}
 
 # Status message function
 msg() {
@@ -24,6 +30,7 @@ msg() {
         warn) echo -e "${C_WARN}⚠${C_RESET} $*" ;;
         error) echo -e "${C_ERR}✗${C_RESET} $*" ;;
     esac
+    log "[$type] $*"
 }
 
 # Cleanup on exit
@@ -37,6 +44,7 @@ trap cleanup EXIT
 
 # System verification
 verify_system() {
+    log "FUNCTION: verify_system() - Starting system verification"
     echo ""
     echo "┌──────────────────────────────────────────┐"
     echo "│     Pre-Installation System Checks       │"
@@ -124,6 +132,7 @@ verify_system() {
 
 # Main installation
 main() {
+    log "FUNCTION: main() - Starting main installation"
     clear
     echo ""
     echo "┌──────────────────────────────────┐"
@@ -167,8 +176,12 @@ main() {
         else
             ((retry_count++))
             if [ $retry_count -lt $max_retries ]; then
-                msg warn "Update failed (attempt $retry_count/$max_retries). Retrying with different mirror..."
+                echo ""
+                msg error "Current mirror is not working!"
+                msg warn "Switching to a different mirror (attempt $retry_count/$max_retries)..."
+                echo ""
                 termux-change-repo
+                msg info "Retrying package update..."
             else
                 msg error "Failed to update package lists after $max_retries attempts"
                 echo ""
@@ -192,17 +205,62 @@ main() {
     
     # Upgrade packages
     msg info "Upgrading existing packages..."
-    pkg upgrade -y -o Dpkg::Options::="--force-confold"
+    if ! pkg upgrade -y -o Dpkg::Options::="--force-confold"; then
+        msg warn "Package upgrade encountered issues, continuing..."
+    fi
     
     # Install core dependencies
     msg info "Installing core dependencies..."
-    pkg install -y wget proot-distro x11-repo tur-repo pulseaudio git
+    retry_count=0
+    while [ $retry_count -lt $max_retries ]; do
+        if pkg install -y wget proot-distro x11-repo tur-repo pulseaudio git 2>/dev/null; then
+            msg ok "Core dependencies installed successfully"
+            break
+        else
+            ((retry_count++))
+            if [ $retry_count -lt $max_retries ]; then
+                echo ""
+                msg error "Failed to install core dependencies!"
+                msg warn "Switching mirror (attempt $retry_count/$max_retries)..."
+                echo ""
+                termux-change-repo
+                pkg update -y 2>/dev/null
+            else
+                msg error "Failed to install core dependencies after $max_retries attempts"
+                exit 1
+            fi
+        fi
+    done
     
     # Install XFCE and essentials
     msg info "Installing XFCE desktop environment..."
-    pkg install -y xfce4 xfce4-goodies xfce4-pulseaudio-plugin \
-        termux-x11-nightly virglrenderer-android mesa-vulkan-icd-freedreno-dri3 \
-        firefox starship fastfetch papirus-icon-theme eza bat
+    retry_count=0
+    while [ $retry_count -lt $max_retries ]; do
+        if pkg install -y xfce4 xfce4-goodies xfce4-pulseaudio-plugin \
+            termux-x11-nightly virglrenderer-android mesa-vulkan-icd-freedreno-dri3 \
+            firefox starship fastfetch papirus-icon-theme eza bat 2>/dev/null; then
+            msg ok "XFCE desktop environment installed successfully"
+            break
+        else
+            ((retry_count++))
+            if [ $retry_count -lt $max_retries ]; then
+                echo ""
+                msg error "Failed to install XFCE packages!"
+                msg warn "Switching mirror (attempt $retry_count/$max_retries)..."
+                echo ""
+                termux-change-repo
+                pkg update -y 2>/dev/null
+            else
+                msg error "Failed to install XFCE packages after $max_retries attempts"
+                echo ""
+                echo "Possible issues:"
+                echo "  1. Network connection unstable"
+                echo "  2. All mirrors are down"
+                echo "  3. Insufficient storage space"
+                exit 1
+            fi
+        fi
+    done
     
     # Create directories
     msg info "Creating directory structure..."
