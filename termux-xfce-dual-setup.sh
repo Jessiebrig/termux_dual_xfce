@@ -44,7 +44,13 @@ msg() {
 cleanup() {
     local exit_code=$?
     if [ $exit_code -ne 0 ] && [ $exit_code -ne 130 ]; then
-        msg error "Installation failed. Check $LOG_FILE for details."
+        msg error "Installation failed."
+        echo ""
+        echo -n "View log file? (y/N): " > /dev/tty
+        read -r response < /dev/tty
+        if [[ "$response" =~ ^[Yy]$ ]]; then
+            less "$LOG_FILE" || cat "$LOG_FILE"
+        fi
     fi
 }
 trap cleanup EXIT
@@ -160,11 +166,16 @@ main() {
     read -r < /dev/tty
     
     # Get username
-    if [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
+    USERNAME_FILE="$HOME/.xfce_debian_username"
+    if [[ -f "$USERNAME_FILE" ]]; then
+        username=$(cat "$USERNAME_FILE")
+        msg ok "Using saved username: $username"
+    elif [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
         # Detect existing username from Debian home directory
         username=$(basename "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/"* 2>/dev/null | grep -v "^root$" | head -n1)
         if [[ -n "$username" && "$username" != "*" ]]; then
             msg ok "Detected existing Debian user: $username"
+            echo "$username" > "$USERNAME_FILE"
         else
             echo ""
             echo -n "Enter username for Debian proot: " > /dev/tty
@@ -173,6 +184,7 @@ main() {
                 msg error "Username cannot be empty"
                 exit 1
             fi
+            echo "$username" > "$USERNAME_FILE"
         fi
     else
         echo ""
@@ -182,6 +194,7 @@ main() {
             msg error "Username cannot be empty"
             exit 1
         fi
+        echo "$username" > "$USERNAME_FILE"
     fi
     
     # Update repositories
