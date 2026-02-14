@@ -201,25 +201,39 @@ main() {
     
     # Install core dependencies
     msg info "Installing core dependencies..."
-    if ! pkg install -y proot-distro x11-repo tur-repo pulseaudio git; then
-        msg error "Failed to install core dependencies"
-        exit 1
-    fi
+    for pkg_name in proot-distro x11-repo tur-repo pulseaudio git; do
+        if pkg list-installed 2>/dev/null | grep -q "^$pkg_name/"; then
+            msg ok "$pkg_name already installed, skipping..."
+        else
+            msg info "Installing $pkg_name..."
+            if ! pkg install -y "$pkg_name"; then
+                msg error "Failed to install $pkg_name"
+                exit 1
+            fi
+        fi
+    done
     msg ok "Core dependencies installed successfully"
     
     # Install XFCE and essentials
     msg info "Installing XFCE desktop environment..."
-    if ! pkg install -y xfce4 xfce4-goodies xfce4-pulseaudio-plugin \
-        termux-x11-nightly virglrenderer-android mesa-vulkan-icd-freedreno-dri3 \
-        firefox starship fastfetch papirus-icon-theme eza bat; then
-        msg error "Failed to install XFCE packages"
-        echo ""
-        echo "Possible issues:"
-        echo "  1. Network connection unstable"
-        echo "  2. Mirror is down - try: termux-change-repo"
-        echo "  3. Insufficient storage space"
-        exit 1
-    fi
+    for pkg_name in xfce4 xfce4-goodies xfce4-pulseaudio-plugin termux-x11-nightly \
+        virglrenderer-android mesa-vulkan-icd-freedreno-dri3 firefox starship \
+        fastfetch papirus-icon-theme eza bat; do
+        if pkg list-installed 2>/dev/null | grep -q "^$pkg_name/"; then
+            msg ok "$pkg_name already installed, skipping..."
+        else
+            msg info "Installing $pkg_name..."
+            if ! pkg install -y "$pkg_name"; then
+                msg error "Failed to install $pkg_name"
+                echo ""
+                echo "Possible issues:"
+                echo "  1. Network connection unstable"
+                echo "  2. Mirror is down - try: termux-change-repo"
+                echo "  3. Insufficient storage space"
+                exit 1
+            fi
+        fi
+    done
     msg ok "XFCE desktop environment installed successfully"
     
     # Create directories
@@ -228,7 +242,8 @@ main() {
     
     # Setup aliases
     msg info "Configuring shell aliases..."
-    cat >> "$PREFIX/etc/bash.bashrc" <<EOF
+    if ! grep -q "# XFCE Setup Aliases" "$PREFIX/etc/bash.bashrc"; then
+        cat >> "$PREFIX/etc/bash.bashrc" <<EOF
 
 # XFCE Setup Aliases
 alias start_debian='proot-distro login debian --user $username --shared-tmp'
@@ -236,17 +251,32 @@ alias ls='eza -lF --icons'
 alias cat='bat'
 eval "\$(starship init bash)"
 EOF
+    else
+        msg ok "Aliases already configured, skipping..."
+    fi
     
     # Install Debian proot
-    msg info "Installing Debian proot environment..."
-    proot-distro install debian
+    if [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
+        msg ok "Debian proot already installed, skipping..."
+    else
+        msg info "Installing Debian proot environment..."
+        proot-distro install debian
+    fi
     
     # Setup Debian packages
     msg info "Configuring Debian environment..."
     proot-distro login debian --shared-tmp -- apt update
     proot-distro login debian --shared-tmp -- apt upgrade -y
-    proot-distro login debian --shared-tmp -- apt install -y sudo xfce4 xfce4-goodies \
-        dbus-x11 conky-all
+    
+    msg info "Installing Debian packages..."
+    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 conky-all; do
+        msg info "Installing Debian package: $deb_pkg..."
+        if ! proot-distro login debian --shared-tmp -- apt install -y "$deb_pkg"; then
+            msg error "Failed to install Debian package: $deb_pkg"
+            exit 1
+        fi
+    done
+    msg ok "Debian packages installed successfully"
     
     # Create Debian user
     msg info "Creating Debian user: $username..."
