@@ -38,51 +38,87 @@ trap cleanup EXIT
 # System verification
 verify_system() {
     echo ""
-    echo "┌──────────────────────────────────┐"
-    echo "│  Pre-Installation Checks         │"
-    echo "└──────────────────────────────────┘"
+    echo "┌──────────────────────────────────────────┐"
+    echo "│     Pre-Installation System Checks       │"
+    echo "└──────────────────────────────────────────┘"
     echo ""
     
     local errors=0
+    local warnings=0
     
-    # Check Android
+    # Check Android OS
     if [[ "$(uname -o)" == "Android" ]]; then
-        msg ok "Android $(getprop ro.build.version.release)"
+        local android_version=$(getprop ro.build.version.release)
+        msg ok "Operating System: Android $android_version"
     else
-        msg error "Not running on Android"
+        msg error "Not running on Android OS"
         ((errors++))
     fi
     
-    # Check architecture
-    if [[ "$(uname -m)" == "aarch64" ]]; then
-        msg ok "Architecture: aarch64"
+    # Display device information
+    local device_brand=$(getprop ro.product.brand)
+    local device_model=$(getprop ro.product.model)
+    if [[ -n "$device_brand" && -n "$device_model" ]]; then
+        msg ok "Device: $device_brand $device_model"
+    fi
+    
+    # Check CPU architecture
+    local arch=$(uname -m)
+    if [[ "$arch" == "aarch64" ]]; then
+        msg ok "CPU Architecture: $arch (ARM64)"
     else
-        msg error "Unsupported architecture (requires aarch64)"
+        msg error "Unsupported architecture: $arch (requires aarch64/ARM64)"
         ((errors++))
     fi
     
     # Check Termux environment
     if [[ -d "$PREFIX" ]]; then
-        msg ok "Termux environment detected"
+        msg ok "Termux environment: Detected"
     else
-        msg error "Termux PREFIX not found"
+        msg error "Termux PREFIX directory not found"
         ((errors++))
     fi
     
-    # Check storage
+    # Check available storage space
     local free_kb=$(df "$HOME" | awk 'NR==2 {print $4}')
-    if [[ $free_kb -gt 3145728 ]]; then
-        msg ok "Storage: $(df -h "$HOME" | awk 'NR==2 {print $4}') available"
+    local free_space=$(df -h "$HOME" | awk 'NR==2 {print $4}')
+    if [[ $free_kb -gt 8388608 ]]; then
+        msg ok "Available Storage: $free_space (sufficient)"
     else
-        msg warn "Low storage: $(df -h "$HOME" | awk 'NR==2 {print $4}') (3GB+ recommended)"
+        msg warn "Available Storage: $free_space (8GB+ recommended)"
+        ((warnings++))
+    fi
+    
+    # Check RAM
+    if command -v free &> /dev/null; then
+        local total_ram=$(free -m | awk 'NR==2 {print $2}')
+        if [[ $total_ram -gt 4096 ]]; then
+            msg ok "System RAM: ${total_ram}MB (sufficient)"
+        else
+            msg warn "System RAM: ${total_ram}MB (4GB+ recommended)"
+            ((warnings++))
+        fi
     fi
     
     echo ""
     if [[ $errors -gt 0 ]]; then
-        msg error "System requirements not met"
+        msg error "System requirements not met ($errors critical error(s))"
+        echo ""
+        echo "Requirements:"
+        echo "  • Android OS (any version)"
+        echo "  • ARM64/aarch64 device"
+        echo "  • Termux from GitHub (not Play Store)"
+        echo "  • 8GB+ free storage space"
+        echo "  • 4GB+ RAM recommended"
+        echo ""
         exit 1
     fi
-    msg ok "System verification passed"
+    
+    if [[ $warnings -gt 0 ]]; then
+        msg ok "System verification passed with $warnings warning(s)"
+    else
+        msg ok "All system requirements met"
+    fi
     echo ""
 }
 
@@ -105,6 +141,7 @@ main() {
     msg warn "Termux-X11 app required: https://github.com/termux/termux-x11/releases"
     echo ""
     read -p "Press Enter to continue or Ctrl+C to cancel..."
+    echo ""
     
     # Get username
     echo ""
