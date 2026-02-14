@@ -75,6 +75,7 @@ This starts a full Debian XFCE desktop session within the proot environment.
 
 ### System Tools
 - `cp2menu` - Import Debian application shortcuts to Termux XFCE menu
+- `kill_termux_x11` - Stop all Termux-X11 sessions
 - `app-installer` - GUI tool for installing apps beyond standard repositories
 
 ## Credits
