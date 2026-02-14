@@ -152,9 +152,35 @@ main() {
         exit 1
     fi
     
-    # Update repositories
+    # Update repositories with retry logic
     msg info "Updating package repositories..."
     termux-change-repo
+    
+    msg info "Refreshing package lists..."
+    local max_retries=3
+    local retry_count=0
+    
+    while [ $retry_count -lt $max_retries ]; do
+        if pkg update -y 2>/dev/null; then
+            msg ok "Package lists updated successfully"
+            break
+        else
+            ((retry_count++))
+            if [ $retry_count -lt $max_retries ]; then
+                msg warn "Update failed (attempt $retry_count/$max_retries). Retrying with different mirror..."
+                termux-change-repo
+            else
+                msg error "Failed to update package lists after $max_retries attempts"
+                echo ""
+                echo "Troubleshooting:"
+                echo "  1. Check your internet connection"
+                echo "  2. Try running manually: termux-change-repo"
+                echo "  3. Select a different mirror and run: pkg update"
+                echo ""
+                exit 1
+            fi
+        fi
+    done
     
     # Setup storage
     if [[ ! -d ~/storage ]]; then
@@ -380,8 +406,7 @@ while true; do
     echo ""
     echo "  ${YELLOW}0${NC} - Exit"
     echo ""
-    echo -n "Select option [0-8]: " > /dev/tty
-    read choice < /dev/tty
+    read -p "Select option [0-8]: " choice
     
     case $choice in
         1)
@@ -404,47 +429,39 @@ while true; do
             ;;
         4)
             echo ""
-            echo -n "Enter command to run: " > /dev/tty
-            read cmd < /dev/tty
+            read -p "Enter command to run: " cmd
             if [[ -n "$cmd" ]]; then
                 prun $cmd
             fi
-            echo "Press Enter to continue..." > /dev/tty
-            read -r < /dev/tty
+            read -p "Press Enter to continue..."
             ;;
         5)
             echo ""
-            echo -n "Enter command to run: " > /dev/tty
-            read cmd < /dev/tty
+            read -p "Enter command to run: " cmd
             if [[ -n "$cmd" ]]; then
                 zrun $cmd
             fi
-            echo "Press Enter to continue..." > /dev/tty
-            read -r < /dev/tty
+            read -p "Press Enter to continue..."
             ;;
         6)
             echo ""
-            echo -n "Enter command to run: " > /dev/tty
-            read cmd < /dev/tty
+            read -p "Enter command to run: " cmd
             if [[ -n "$cmd" ]]; then
                 zrunhud $cmd
             fi
-            echo "Press Enter to continue..." > /dev/tty
-            read -r < /dev/tty
+            read -p "Press Enter to continue..."
             ;;
         7)
             echo ""
             cp2menu
-            echo "Press Enter to continue..." > /dev/tty
-            read -r < /dev/tty
+            read -p "Press Enter to continue..."
             ;;
         8)
             echo ""
             echo "${YELLOW}Killing Termux-X11...${NC}"
             kill_termux_x11
             echo "Done."
-            echo "Press Enter to continue..." > /dev/tty
-            read -r < /dev/tty
+            read -p "Press Enter to continue..."
             ;;
         0)
             echo ""
