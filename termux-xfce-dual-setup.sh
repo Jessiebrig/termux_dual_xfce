@@ -49,6 +49,8 @@ cleanup() {
         echo -n "View log file? (y/N): " > /dev/tty
         read -r response < /dev/tty
         if [[ "$response" =~ ^[Yy]$ ]]; then
+            echo "Press 'q' to close the log viewer..."
+            sleep 1
             less "$LOG_FILE" || cat "$LOG_FILE"
         fi
     fi
@@ -196,6 +198,9 @@ main() {
         fi
         echo "$username" > "$USERNAME_FILE"
     fi
+    
+    # Clear any stale locks
+    rm -f "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" 2>/dev/null
     
     # Update repositories
     msg info "Updating package repositories..."
