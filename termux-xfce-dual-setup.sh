@@ -204,18 +204,23 @@ main() {
     
     # Update repositories
     msg info "Updating package repositories..."
-    termux-change-repo
-    
-    msg info "Refreshing package lists..."
     if ! pkg update -y; then
-        msg error "Failed to update package lists"
-        echo ""
-        echo "Troubleshooting:"
-        echo "  1. Check your internet connection"
-        echo "  2. Try running: termux-change-repo"
-        echo "  3. Select a different mirror"
-        echo ""
-        exit 1
+        msg warn "Package update failed, trying mirror selection..."
+        termux-change-repo
+        # Wait for termux-change-repo to complete and clear locks
+        sleep 2
+        rm -f "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" 2>/dev/null
+        msg info "Retrying package update..."
+        if ! pkg update -y; then
+            msg error "Failed to update package lists after changing mirror"
+            echo ""
+            echo "Troubleshooting:"
+            echo "  1. Check your internet connection"
+            echo "  2. Try a different mirror in termux-change-repo"
+            echo "  3. Restart Termux and try again"
+            echo ""
+            exit 1
+        fi
     fi
     msg ok "Package lists updated successfully"
     
