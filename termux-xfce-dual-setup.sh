@@ -160,12 +160,28 @@ main() {
     read -r < /dev/tty
     
     # Get username
-    echo ""
-    echo -n "Enter username for Debian proot: " > /dev/tty
-    read username < /dev/tty
-    if [[ -z "$username" ]]; then
-        msg error "Username cannot be empty"
-        exit 1
+    if [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
+        # Detect existing username from Debian home directory
+        username=$(basename "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/"* 2>/dev/null | grep -v "^root$" | head -n1)
+        if [[ -n "$username" && "$username" != "*" ]]; then
+            msg ok "Detected existing Debian user: $username"
+        else
+            echo ""
+            echo -n "Enter username for Debian proot: " > /dev/tty
+            read username < /dev/tty
+            if [[ -z "$username" ]]; then
+                msg error "Username cannot be empty"
+                exit 1
+            fi
+        fi
+    else
+        echo ""
+        echo -n "Enter username for Debian proot: " > /dev/tty
+        read username < /dev/tty
+        if [[ -z "$username" ]]; then
+            msg error "Username cannot be empty"
+            exit 1
+        fi
     fi
     
     # Update repositories
