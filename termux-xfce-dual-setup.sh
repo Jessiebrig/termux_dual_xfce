@@ -44,13 +44,15 @@ msg() {
 cleanup() {
     local exit_code=$?
     if [ $exit_code -ne 0 ] && [ $exit_code -ne 130 ]; then
+        # Add quit instruction at top and bottom
+        sed -i '1i=== Press '"'"'q'"'"' to close this log viewer ===' "$LOG_FILE"
+        echo "" >> "$LOG_FILE"
+        echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE"
         msg error "Installation failed."
         echo ""
         echo -n "View log file? (y/N): " > /dev/tty
         read -r response < /dev/tty
         if [[ "$response" =~ ^[Yy]$ ]]; then
-            echo "Press 'q' to close the log viewer..."
-            sleep 1
             less "$LOG_FILE" || cat "$LOG_FILE"
         fi
     fi
@@ -256,7 +258,7 @@ main() {
     # Install XFCE and essentials
     msg info "Installing XFCE desktop environment..."
     for pkg_name in xfce4 xfce4-goodies xfce4-pulseaudio-plugin termux-x11-nightly \
-        virglrenderer-android mesa-vulkan-icd-freedreno-dri3 firefox starship \
+        virglrenderer-android firefox starship \
         fastfetch papirus-icon-theme eza bat; do
         if pkg list-installed 2>/dev/null | grep -q "^$pkg_name/"; then
             msg ok "$pkg_name already installed, skipping..."
@@ -273,11 +275,22 @@ main() {
             fi
         fi
     done
+    
+    # Try to install optional Vulkan driver (may not be available on all devices)
+    msg info "Installing optional GPU drivers..."
+    pkg install -y mesa-vulkan-icd-freedreno-dri3 2>/dev/null || msg warn "Vulkan driver not available for this device (optional)"
+    
     msg ok "XFCE desktop environment installed successfully"
     
     # Create directories
     msg info "Creating directory structure..."
     mkdir -p "$HOME"/{Desktop,Downloads,.config/xfce4/xfconf/xfce-perchannel-xml,.config/autostart}
+    
+    # Initialize XFCE settings to prevent first-run errors
+    msg info "Initializing XFCE settings..."
+    export DISPLAY=:0
+    xfconf-query -c xfce4-session -p /startup/compat/LaunchGNOME -n -t bool -s false 2>/dev/null || true
+    xfconf-query -c xfce4-session -p /general/FailsafeSessionName -n -t string -s "Failsafe" 2>/dev/null || true
     
     # Setup aliases
     msg info "Configuring shell aliases..."
@@ -360,6 +373,10 @@ fi
 
 export PULSE_SERVER=127.0.0.1
 export XDG_RUNTIME_DIR=${TMPDIR}
+export DISPLAY=:0
+
+# Ensure D-Bus directories exist
+mkdir -p "$XDG_RUNTIME_DIR"
 
 termux-x11 :0 >/dev/null &
 sleep 3
@@ -375,7 +392,7 @@ elif echo "$gpu_info" | grep -iq "mali"; then
     MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android --angle-gl &
 fi
 
-dbus-launch --exit-with-session env DISPLAY=:0 GALLIUM_DRIVER=virpipe xfce4-session &
+dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe xfce4-session &
 STARTEOF
     chmod +x "$PREFIX/bin/start_xfce"
     
@@ -455,8 +472,12 @@ MENUEOF
     
     # Install app-installer
     msg info "Installing app-installer utility..."
-    git clone -q https://github.com/phoenixbyrd/App-Installer.git "$HOME/.config/App-Installer"
-    chmod +x "$HOME/.config/App-Installer"/*
+    if [[ -d "$HOME/.config/App-Installer" ]]; then
+        msg ok "App-Installer already installed, skipping..."
+    else
+        git clone -q https://github.com/phoenixbyrd/App-Installer.git "$HOME/.config/App-Installer" || msg warn "Failed to clone App-Installer (may already exist)"
+    fi
+    chmod +x "$HOME/.config/App-Installer"/* 2>/dev/null || true
     
     cat > "$PREFIX/share/applications/app-installer.desktop" <<EOF
 [Desktop Entry]
@@ -477,7 +498,6 @@ EOF
     sed -i "s|^Exec=.*|Exec=prun conky -c .config/conky/Alterf/Alterf.conf|" "$HOME/.config/autostart/conky.desktop"
     
     # Completion message
-    clear
     echo ""
     echo "┌──────────────────────────────────┐"
     echo "│  Installation Complete!          │"
@@ -486,18 +506,19 @@ EOF
     msg ok "Setup finished successfully!"
     echo ""
     echo "Available commands:"
-    echo "  ${GREEN}start_xfce${NC}        - Launch native Termux XFCE"
-    echo "  ${GREEN}start_debian_xfce${NC} - Launch Debian XFCE"
-    echo "  ${GREEN}start_debian${NC}      - Enter Debian proot CLI"
-    echo "  ${GREEN}prun${NC}              - Run Debian commands"
-    echo "  ${GREEN}zrun${NC}              - Run with hardware acceleration"
-    echo "  ${GREEN}zrunhud${NC}           - Run with HW accel + FPS display"
-    echo "  ${GREEN}cp2menu${NC}           - Copy Debian apps to menu"
-    echo "  ${GREEN}launch${NC}            - Interactive menu for all commands"
+    echo "  ${C_OK}start_xfce${C_RESET}        - Launch native Termux XFCE"
+    echo "  ${C_OK}start_debian_xfce${C_RESET} - Launch Debian XFCE"
+    echo "  ${C_OK}start_debian${C_RESET}      - Enter Debian proot CLI"
+    echo "  ${C_OK}prun${C_RESET}              - Run Debian commands"
+    echo "  ${C_OK}zrun${C_RESET}              - Run with hardware acceleration"
+    echo "  ${C_OK}zrunhud${C_RESET}           - Run with HW accel + FPS display"
+    echo "  ${C_OK}cp2menu${C_RESET}           - Copy Debian apps to menu"
+    echo "  ${C_OK}launch${C_RESET}            - Interactive menu for all commands"
     echo ""
     
-    source "$PREFIX/etc/bash.bashrc"
-    termux-reload-settings
+    set +u  # Disable unbound variable check for sourcing
+    source "$PREFIX/etc/bash.bashrc" 2>/dev/null || true
+    termux-reload-settings 2>/dev/null || true
 }
 
 main "$@"
