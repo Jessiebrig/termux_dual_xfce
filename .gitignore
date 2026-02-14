@@ -1,0 +1,11 @@
+# Original reference files (not for publication)
+old_README.md
+old_termux-xfce-dual-setup.sh
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*~
