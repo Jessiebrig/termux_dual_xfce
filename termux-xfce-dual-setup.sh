@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Configuration
+CLEAR_LOG_ON_START=true  # Set to false to keep previous logs
+
 # Strict error handling
 set -euo pipefail
 
@@ -12,7 +15,11 @@ C_RESET='\033[0m'
 
 # Log file
 LOG_FILE="$HOME/xfce_install.log"
-echo "=== Installation started at $(date) ===" >> "$LOG_FILE"
+if [[ "$CLEAR_LOG_ON_START" == "true" ]]; then
+    echo "=== Installation started at $(date) ===" > "$LOG_FILE"
+else
+    echo "=== Installation started at $(date) ===" >> "$LOG_FILE"
+fi
 exec 2>>"$LOG_FILE"
 
 # Logging function
@@ -161,39 +168,22 @@ main() {
         exit 1
     fi
     
-    # Update repositories with retry logic
+    # Update repositories
     msg info "Updating package repositories..."
     termux-change-repo
     
     msg info "Refreshing package lists..."
-    local max_retries=3
-    local retry_count=0
-    
-    while [ $retry_count -lt $max_retries ]; do
-        if pkg update -y 2>/dev/null; then
-            msg ok "Package lists updated successfully"
-            break
-        else
-            ((retry_count++))
-            if [ $retry_count -lt $max_retries ]; then
-                echo ""
-                msg error "Current mirror is not working!"
-                msg warn "Switching to a different mirror (attempt $retry_count/$max_retries)..."
-                echo ""
-                termux-change-repo
-                msg info "Retrying package update..."
-            else
-                msg error "Failed to update package lists after $max_retries attempts"
-                echo ""
-                echo "Troubleshooting:"
-                echo "  1. Check your internet connection"
-                echo "  2. Try running manually: termux-change-repo"
-                echo "  3. Select a different mirror and run: pkg update"
-                echo ""
-                exit 1
-            fi
-        fi
-    done
+    if ! pkg update -y; then
+        msg error "Failed to update package lists"
+        echo ""
+        echo "Troubleshooting:"
+        echo "  1. Check your internet connection"
+        echo "  2. Try running: termux-change-repo"
+        echo "  3. Select a different mirror"
+        echo ""
+        exit 1
+    fi
+    msg ok "Package lists updated successfully"
     
     # Setup storage
     if [[ ! -d ~/storage ]]; then
@@ -211,56 +201,26 @@ main() {
     
     # Install core dependencies
     msg info "Installing core dependencies..."
-    retry_count=0
-    while [ $retry_count -lt $max_retries ]; do
-        if pkg install -y wget proot-distro x11-repo tur-repo pulseaudio git 2>/dev/null; then
-            msg ok "Core dependencies installed successfully"
-            break
-        else
-            ((retry_count++))
-            if [ $retry_count -lt $max_retries ]; then
-                echo ""
-                msg error "Failed to install core dependencies!"
-                msg warn "Switching mirror (attempt $retry_count/$max_retries)..."
-                echo ""
-                termux-change-repo
-                pkg update -y 2>/dev/null
-            else
-                msg error "Failed to install core dependencies after $max_retries attempts"
-                exit 1
-            fi
-        fi
-    done
+    if ! pkg install -y proot-distro x11-repo tur-repo pulseaudio git; then
+        msg error "Failed to install core dependencies"
+        exit 1
+    fi
+    msg ok "Core dependencies installed successfully"
     
     # Install XFCE and essentials
     msg info "Installing XFCE desktop environment..."
-    retry_count=0
-    while [ $retry_count -lt $max_retries ]; do
-        if pkg install -y xfce4 xfce4-goodies xfce4-pulseaudio-plugin \
-            termux-x11-nightly virglrenderer-android mesa-vulkan-icd-freedreno-dri3 \
-            firefox starship fastfetch papirus-icon-theme eza bat 2>/dev/null; then
-            msg ok "XFCE desktop environment installed successfully"
-            break
-        else
-            ((retry_count++))
-            if [ $retry_count -lt $max_retries ]; then
-                echo ""
-                msg error "Failed to install XFCE packages!"
-                msg warn "Switching mirror (attempt $retry_count/$max_retries)..."
-                echo ""
-                termux-change-repo
-                pkg update -y 2>/dev/null
-            else
-                msg error "Failed to install XFCE packages after $max_retries attempts"
-                echo ""
-                echo "Possible issues:"
-                echo "  1. Network connection unstable"
-                echo "  2. All mirrors are down"
-                echo "  3. Insufficient storage space"
-                exit 1
-            fi
-        fi
-    done
+    if ! pkg install -y xfce4 xfce4-goodies xfce4-pulseaudio-plugin \
+        termux-x11-nightly virglrenderer-android mesa-vulkan-icd-freedreno-dri3 \
+        firefox starship fastfetch papirus-icon-theme eza bat; then
+        msg error "Failed to install XFCE packages"
+        echo ""
+        echo "Possible issues:"
+        echo "  1. Network connection unstable"
+        echo "  2. Mirror is down - try: termux-change-repo"
+        echo "  3. Insufficient storage space"
+        exit 1
+    fi
+    msg ok "XFCE desktop environment installed successfully"
     
     # Create directories
     msg info "Creating directory structure..."
@@ -311,7 +271,7 @@ EOF
     # Setup hardware acceleration in Debian
     msg info "Configuring hardware acceleration..."
     proot-distro login debian --shared-tmp -- bash -c "
-        wget -q https://github.com/phoenixbyrd/Termux_XFCE/raw/main/mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
+        curl -sLO https://github.com/phoenixbyrd/Termux_XFCE/raw/main/mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
         apt install -y ./mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
         rm mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
     "
@@ -419,121 +379,9 @@ fi
 MENUEOF
     chmod +x "$PREFIX/bin/cp2menu"
     
-    # Create launch menu
-    cat > "$PREFIX/bin/launch" <<'LAUNCHEOF'
-#!/bin/bash
-
-# Color codes
-GREEN='\033[0;32m'
-CYAN='\033[0;36m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-while true; do
-    clear
-    echo ""
-    echo "┌────────────────────────────────────────┐"
-    echo "│       Termux XFCE Quick Launch         │"
-    echo "└────────────────────────────────────────┘"
-    echo ""
-    echo "${CYAN}Desktop Environments:${NC}"
-    echo "  ${GREEN}1${NC} - Start Native Termux XFCE"
-    echo "      Launch XFCE desktop in Termux-X11"
-    echo ""
-    echo "  ${GREEN}2${NC} - Start Debian XFCE"
-    echo "      Launch XFCE desktop in Debian proot"
-    echo ""
-    echo "  ${GREEN}3${NC} - Start Debian CLI"
-    echo "      Enter Debian proot terminal"
-    echo ""
-    echo "${CYAN}Utilities:${NC}"
-    echo "  ${GREEN}4${NC} - prun <command>"
-    echo "      Run Debian commands from Termux"
-    echo ""
-    echo "  ${GREEN}5${NC} - zrun <command>"
-    echo "      Run with hardware acceleration"
-    echo ""
-    echo "  ${GREEN}6${NC} - zrunhud <command>"
-    echo "      Run with HW accel + FPS display"
-    echo ""
-    echo "  ${GREEN}7${NC} - cp2menu"
-    echo "      Copy Debian apps to Termux menu"
-    echo ""
-    echo "  ${GREEN}8${NC} - Kill Termux-X11"
-    echo "      Stop all X11 sessions"
-    echo ""
-    echo "  ${YELLOW}0${NC} - Exit"
-    echo ""
-    read -p "Select option [0-8]: " choice
-    
-    case $choice in
-        1)
-            echo ""
-            echo "${GREEN}Starting Native Termux XFCE...${NC}"
-            start_xfce
-            exit 0
-            ;;
-        2)
-            echo ""
-            echo "${GREEN}Starting Debian XFCE...${NC}"
-            start_debian_xfce
-            exit 0
-            ;;
-        3)
-            echo ""
-            echo "${GREEN}Entering Debian CLI...${NC}"
-            start_debian
-            exit 0
-            ;;
-        4)
-            echo ""
-            read -p "Enter command to run: " cmd
-            if [[ -n "$cmd" ]]; then
-                prun $cmd
-            fi
-            read -p "Press Enter to continue..."
-            ;;
-        5)
-            echo ""
-            read -p "Enter command to run: " cmd
-            if [[ -n "$cmd" ]]; then
-                zrun $cmd
-            fi
-            read -p "Press Enter to continue..."
-            ;;
-        6)
-            echo ""
-            read -p "Enter command to run: " cmd
-            if [[ -n "$cmd" ]]; then
-                zrunhud $cmd
-            fi
-            read -p "Press Enter to continue..."
-            ;;
-        7)
-            echo ""
-            cp2menu
-            read -p "Press Enter to continue..."
-            ;;
-        8)
-            echo ""
-            echo "${YELLOW}Killing Termux-X11...${NC}"
-            kill_termux_x11
-            echo "Done."
-            read -p "Press Enter to continue..."
-            ;;
-        0)
-            echo ""
-            echo "Goodbye!"
-            exit 0
-            ;;
-        *)
-            echo ""
-            echo "${YELLOW}Invalid option. Please try again.${NC}"
-            sleep 1
-            ;;
-    esac
-done
-LAUNCHEOF
+    # Download launch menu
+    msg info "Installing launch menu..."
+    curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/launch -o "$PREFIX/bin/launch"
     chmod +x "$PREFIX/bin/launch"
     
     # Install app-installer
@@ -554,9 +402,7 @@ EOF
     
     # Setup Conky
     msg info "Configuring Conky system monitor..."
-    wget -q https://github.com/phoenixbyrd/Termux_XFCE/raw/main/conky.tar.gz
-    tar -xzf conky.tar.gz -C "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/"
-    rm conky.tar.gz
+    curl -sL https://github.com/phoenixbyrd/Termux_XFCE/raw/main/conky.tar.gz | tar -xz -C "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/"
     
     cp "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/usr/share/applications/conky.desktop" "$HOME/.config/autostart/"
     sed -i "s|^Exec=.*|Exec=prun conky -c .config/conky/Alterf/Alterf.conf|" "$HOME/.config/autostart/conky.desktop"
