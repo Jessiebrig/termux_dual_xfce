@@ -259,7 +259,7 @@ main() {
     msg info "Installing XFCE desktop environment..."
     for pkg_name in xfce4 xfce4-goodies xfce4-pulseaudio-plugin termux-x11-nightly \
         virglrenderer-android firefox starship \
-        fastfetch papirus-icon-theme eza bat; do
+        fastfetch papirus-icon-theme eza bat htop; do
         if pkg list-installed 2>/dev/null | grep -q "^$pkg_name/"; then
             msg ok "$pkg_name already installed, skipping..."
         else
@@ -321,7 +321,7 @@ EOF
     proot-distro login debian --shared-tmp -- apt upgrade -y
     
     msg info "Installing Debian packages..."
-    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 conky-all; do
+    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 conky-all htop; do
         msg info "Installing Debian package: $deb_pkg..."
         if ! proot-distro login debian --shared-tmp -- apt install -y "$deb_pkg"; then
             msg error "Failed to install Debian package: $deb_pkg"
@@ -357,6 +357,28 @@ EOF
         apt install -y ./mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
         rm mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
     "
+    
+    # Install aesthetic packages in Debian
+    msg info "Installing aesthetic packages in Debian..."
+    proot-distro login debian --shared-tmp -- bash -c "
+        # Install eza (modern ls)
+        apt install -y gpg wget
+        mkdir -p /etc/apt/keyrings
+        wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
+        echo 'deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main' | tee /etc/apt/sources.list.d/gierens.list
+        chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
+        apt update
+        apt install -y eza
+        
+        # Install bat (syntax-highlighted cat)
+        apt install -y bat
+        
+        # Install fastfetch
+        apt install -y fastfetch || echo 'fastfetch not available in Debian repos'
+        
+        # Install starship
+        curl -sS https://starship.rs/install.sh | sh -s -- -y
+    " || msg warn "Some aesthetic packages failed to install in Debian (non-critical)"
     
     # Create start script
     msg info "Creating launcher scripts..."
@@ -399,6 +421,28 @@ STARTEOF
     # Create start_debian_xfce script
     cat > "$PREFIX/bin/start_debian_xfce" <<'DEBIANEOF'
 #!/bin/bash
+# Start Termux X11 if not already running
+if ! pgrep -f "termux-x11" > /dev/null; then
+    kill -9 $(pgrep -f "termux.x11") 2>/dev/null
+    
+    # Setup audio
+    if [[ "$(getprop ro.product.manufacturer | tr '[:upper:]' '[:lower:]')" == "samsung" ]]; then
+        LD_PRELOAD=/system/lib64/libskcodec.so pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
+    else
+        pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
+    fi
+    
+    export PULSE_SERVER=127.0.0.1
+    export XDG_RUNTIME_DIR=${TMPDIR}
+    mkdir -p "$XDG_RUNTIME_DIR"
+    
+    termux-x11 :0 >/dev/null &
+    sleep 3
+    
+    am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
+    sleep 1
+fi
+
 username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
 proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
 DEBIANEOF
@@ -506,14 +550,14 @@ EOF
     msg ok "Setup finished successfully!"
     echo ""
     echo "Available commands:"
-    echo "  ${C_OK}start_xfce${C_RESET}        - Launch native Termux XFCE"
-    echo "  ${C_OK}start_debian_xfce${C_RESET} - Launch Debian XFCE"
-    echo "  ${C_OK}start_debian${C_RESET}      - Enter Debian proot CLI"
-    echo "  ${C_OK}prun${C_RESET}              - Run Debian commands"
-    echo "  ${C_OK}zrun${C_RESET}              - Run with hardware acceleration"
-    echo "  ${C_OK}zrunhud${C_RESET}           - Run with HW accel + FPS display"
-    echo "  ${C_OK}cp2menu${C_RESET}           - Copy Debian apps to menu"
-    echo "  ${C_OK}launch${C_RESET}            - Interactive menu for all commands"
+    echo "  ${C_OK} start_xfce${C_RESET}        - Launch native Termux XFCE"
+    echo "  ${C_OK} start_debian_xfce${C_RESET} - Launch Debian XFCE"
+    echo "  ${C_OK} start_debian${C_RESET}      - Enter Debian proot CLI"
+    echo "  ${C_OK} prun${C_RESET}              - Run Debian commands"
+    echo "  ${C_OK} zrun${C_RESET}              - Run with hardware acceleration"
+    echo "  ${C_OK} zrunhud${C_RESET}           - Run with HW accel + FPS display"
+    echo "  ${C_OK} cp2menu${C_RESET}           - Copy Debian apps to menu"
+    echo "  ${C_OK} launch${C_RESET}            - Interactive menu for all commands"
     echo ""
     
     set +u  # Disable unbound variable check for sourcing
