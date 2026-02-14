@@ -331,54 +331,76 @@ EOF
     msg ok "Debian packages installed successfully"
     
     # Create Debian user
-    msg info "Creating Debian user: $username..."
-    proot-distro login debian --shared-tmp -- groupadd -f storage
-    proot-distro login debian --shared-tmp -- groupadd -f wheel
-    proot-distro login debian --shared-tmp -- useradd -m -g users -G wheel,audio,video,storage -s /bin/bash "$username" 2>/dev/null || true
+    if ! proot-distro login debian --shared-tmp -- id "$username" &>/dev/null; then
+        msg info "Creating Debian user: $username..."
+        proot-distro login debian --shared-tmp -- groupadd -f storage
+        proot-distro login debian --shared-tmp -- groupadd -f wheel
+        proot-distro login debian --shared-tmp -- useradd -m -g users -G wheel,audio,video,storage -s /bin/bash "$username"
+    else
+        msg ok "Debian user $username already exists, skipping..."
+    fi
     
     # Configure sudo
-    chmod u+rw "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/etc/sudoers"
-    echo "$username ALL=(ALL) NOPASSWD:ALL" >> "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/etc/sudoers"
-    chmod u-w "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/etc/sudoers"
+    if ! grep -q "$username ALL=(ALL) NOPASSWD:ALL" "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/etc/sudoers" 2>/dev/null; then
+        msg info "Configuring sudo for $username..."
+        chmod u+rw "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/etc/sudoers"
+        echo "$username ALL=(ALL) NOPASSWD:ALL" >> "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/etc/sudoers"
+        chmod u-w "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/etc/sudoers"
+    else
+        msg ok "Sudo already configured for $username, skipping..."
+    fi
     
     # Setup Debian environment
-    cat >> "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.bashrc" <<EOF
+    if ! grep -q "export DISPLAY=:0" "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.bashrc" 2>/dev/null; then
+        msg info "Configuring Debian user environment..."
+        cat >> "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.bashrc" <<EOF
 
 export DISPLAY=:0
 alias ls='eza -lF --icons' 2>/dev/null || alias ls='ls --color=auto'
 alias cat='bat' 2>/dev/null || alias cat='cat'
 eval "\$(starship init bash)" 2>/dev/null || true
 EOF
+    else
+        msg ok "Debian user environment already configured, skipping..."
+    fi
     
     # Setup hardware acceleration in Debian
-    msg info "Configuring hardware acceleration..."
-    proot-distro login debian --shared-tmp -- bash -c "
-        curl -sLO https://github.com/phoenixbyrd/Termux_XFCE/raw/main/mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
-        apt install -y ./mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
-        rm mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
-    "
+    if [[ ! -f "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
+        msg info "Configuring hardware acceleration..."
+        proot-distro login debian --shared-tmp -- bash -c "
+            curl -sLO https://github.com/phoenixbyrd/Termux_XFCE/raw/main/mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
+            apt install -y ./mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
+            rm mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
+        "
+    else
+        msg ok "Hardware acceleration already configured, skipping..."
+    fi
     
     # Install aesthetic packages in Debian
-    msg info "Installing aesthetic packages in Debian..."
-    proot-distro login debian --shared-tmp -- bash -c "
-        # Install eza (modern ls)
-        apt install -y gpg wget
-        mkdir -p /etc/apt/keyrings
-        wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
-        echo 'deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main' | tee /etc/apt/sources.list.d/gierens.list
-        chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
-        apt update
-        apt install -y eza
-        
-        # Install bat (syntax-highlighted cat)
-        apt install -y bat
-        
-        # Install fastfetch
-        apt install -y fastfetch || echo 'fastfetch not available in Debian repos'
-        
-        # Install starship
-        curl -sS https://starship.rs/install.sh | sh -s -- -y
-    " || msg warn "Some aesthetic packages failed to install in Debian (non-critical)"
+    if ! proot-distro login debian --shared-tmp -- command -v eza &>/dev/null; then
+        msg info "Installing aesthetic packages in Debian..."
+        proot-distro login debian --shared-tmp -- bash -c "
+            # Install eza (modern ls)
+            apt install -y gpg wget
+            mkdir -p /etc/apt/keyrings
+            wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
+            echo 'deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main' | tee /etc/apt/sources.list.d/gierens.list
+            chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
+            apt update
+            apt install -y eza
+            
+            # Install bat (syntax-highlighted cat)
+            apt install -y bat
+            
+            # Install fastfetch
+            apt install -y fastfetch || echo 'fastfetch not available in Debian repos'
+            
+            # Install starship
+            curl -sS https://starship.rs/install.sh | sh -s -- -y
+        " || msg warn "Some aesthetic packages failed to install in Debian (non-critical)"
+    else
+        msg ok "Aesthetic packages already installed in Debian, skipping..."
+    fi
     
     # Create start script
     msg info "Creating launcher scripts..."
@@ -535,11 +557,15 @@ Terminal=false
 EOF
     
     # Setup Conky
-    msg info "Configuring Conky system monitor..."
-    curl -sL https://github.com/phoenixbyrd/Termux_XFCE/raw/main/conky.tar.gz | tar -xz -C "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/"
-    
-    cp "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/usr/share/applications/conky.desktop" "$HOME/.config/autostart/"
-    sed -i "s|^Exec=.*|Exec=prun conky -c .config/conky/Alterf/Alterf.conf|" "$HOME/.config/autostart/conky.desktop"
+    if [[ ! -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config/conky" ]]; then
+        msg info "Configuring Conky system monitor..."
+        curl -sL https://github.com/phoenixbyrd/Termux_XFCE/raw/main/conky.tar.gz | tar -xz -C "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/"
+        
+        cp "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/usr/share/applications/conky.desktop" "$HOME/.config/autostart/"
+        sed -i "s|^Exec=.*|Exec=prun conky -c .config/conky/Alterf/Alterf.conf|" "$HOME/.config/autostart/conky.desktop"
+    else
+        msg ok "Conky already configured, skipping..."
+    fi
     
     # Completion message
     echo ""
