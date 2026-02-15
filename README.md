@@ -121,7 +121,7 @@ This starts a full Debian XFCE desktop session within the proot environment. A t
 ### Proot Utilities
 - `xrun drun <command>` - Run Debian commands from Termux without entering proot shell
 - `xrun dgpu <command>` - Run Debian apps with hardware acceleration enabled
-- `xrun dfps <command>` - Run with hardware acceleration and FPS overlay
+- `xrun dfps <command>` - Run Debian with hardware acceleration and FPS overlay
 
 ### System Tools
 - `xrun kill_termux_x11` - Stop all Termux-X11 sessions

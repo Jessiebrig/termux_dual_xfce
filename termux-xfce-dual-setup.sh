@@ -67,7 +67,7 @@ cleanup() {
         echo -n "View log file? (y/N): " > /dev/tty
         read -r response < /dev/tty
         if [[ "$response" =~ ^[Yy]$ ]]; then
-            less "$LOG_FILE" || cat "$LOG_FILE"
+            less "$LOG_FILE" || true
         fi
         
         # Prompt for full output
@@ -77,7 +77,8 @@ cleanup() {
             read -r full_response < /dev/tty
             case "$full_response" in
                 [Vv])
-                    less "$FULL_OUTPUT_FILE" || cat "$FULL_OUTPUT_FILE"
+                    less "$FULL_OUTPUT_FILE" || true
+                    termux-clipboard-set < "$FULL_OUTPUT_FILE" 2>/dev/null && echo "Full output copied to clipboard" || true
                     rm -f "$FULL_OUTPUT_FILE"
                     ;;
                 [Ss])
@@ -85,8 +86,12 @@ cleanup() {
                     SAVED_FILE="$HOME/xfce_install_full_${TIMESTAMP}.txt"
                     cp "$FULL_OUTPUT_FILE" "$SAVED_FILE"
                     ls -t "$HOME"/xfce_install_full_*.txt 2>/dev/null | tail -n +6 | xargs -r rm -f
+                    sed -i '1i=== Press '"'"'q'"'"' to close this log viewer ===' "$SAVED_FILE"
+                    echo "" >> "$SAVED_FILE"
+                    echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE"
                     echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt"
-                    less "$SAVED_FILE" || cat "$SAVED_FILE"
+                    less "$SAVED_FILE" || true
+                    termux-clipboard-set < "$SAVED_FILE" 2>/dev/null && echo "Full output copied to clipboard" || true
                     rm -f "$FULL_OUTPUT_FILE"
                     ;;
                 *)
@@ -510,14 +515,14 @@ EOF
     msg ok "Setup finished successfully!"
     echo ""
     echo "Available commands:"
-    echo -e "  ${C_OK}xrun${C_RESET}                 - Interactive menu for all commands"
-    echo -e "  ${C_OK}xrun start_xfce${C_RESET}      - Launch native Termux XFCE"
-    echo -e "  ${C_OK}xrun start_debian_xfce${C_RESET} - Launch Debian XFCE"
-    echo -e "  ${C_OK}xrun start_debian${C_RESET}    - Enter Debian proot CLI"
-    echo -e "  ${C_OK}xrun drun <cmd>${C_RESET}      - Run Debian commands"
-    echo -e "  ${C_OK}xrun dgpu <cmd>${C_RESET}      - Run with hardware acceleration"
-    echo -e "  ${C_OK}xrun dfps <cmd>${C_RESET}      - Run with HW accel + FPS display"
-    echo -e "  ${C_OK}xrun kill_termux_x11${C_RESET} - Stop all X11 sessions"
+    echo -e "  ${C_OK}xrun${C_RESET}                    - Quick access menu with numbered options"
+    echo -e "  ${C_OK}xrun start_xfce${C_RESET}         - Launch native Termux XFCE desktop"
+    echo -e "  ${C_OK}xrun start_debian_xfce${C_RESET}  - Launch Debian proot XFCE desktop"
+    echo -e "  ${C_OK}xrun start_debian${C_RESET}       - Enter Debian proot terminal"
+    echo -e "  ${C_OK}xrun drun <command>${C_RESET}     - Run Debian commands from Termux"
+    echo -e "  ${C_OK}xrun dgpu <command>${C_RESET}     - Run Debian apps with hardware acceleration"
+    echo -e "  ${C_OK}xrun dfps <command>${C_RESET}     - Run Debian with hardware acceleration and FPS overlay"
+    echo -e "  ${C_OK}xrun kill_termux_x11${C_RESET}    - Stop all Termux-X11 sessions"
     echo ""
     
     # Prompt for full output on success
@@ -525,7 +530,11 @@ EOF
         echo -n "View log file? (y/N): " > /dev/tty
         read -r response < /dev/tty
         if [[ "$response" =~ ^[Yy]$ ]]; then
-            less "$LOG_FILE" || cat "$LOG_FILE"
+            sed -i '1i=== Press '"'"'q'"'"' to close this log viewer ===' "$LOG_FILE"
+            echo "" >> "$LOG_FILE"
+            echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE"
+            less "$LOG_FILE" || true
+            termux-clipboard-set < "$LOG_FILE" 2>/dev/null && echo "Log file copied to clipboard" || true
         fi
         
         echo "" > /dev/tty
@@ -533,7 +542,8 @@ EOF
         read -r full_response < /dev/tty
         case "$full_response" in
             [Vv])
-                less "$FULL_OUTPUT_FILE" || cat "$FULL_OUTPUT_FILE"
+                less "$FULL_OUTPUT_FILE" || true
+                termux-clipboard-set < "$FULL_OUTPUT_FILE" 2>/dev/null && echo "Full output copied to clipboard" || true
                 rm -f "$FULL_OUTPUT_FILE"
                 ;;
             [Ss])
@@ -541,8 +551,12 @@ EOF
                 SAVED_FILE="$HOME/xfce_install_full_${TIMESTAMP}.txt"
                 cp "$FULL_OUTPUT_FILE" "$SAVED_FILE"
                 ls -t "$HOME"/xfce_install_full_*.txt 2>/dev/null | tail -n +6 | xargs -r rm -f
+                sed -i '1i=== Press '"'"'q'"'"' to close this log viewer ===' "$SAVED_FILE"
+                echo "" >> "$SAVED_FILE"
+                echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE"
                 echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt" > /dev/tty
-                less "$SAVED_FILE" || cat "$SAVED_FILE"
+                less "$SAVED_FILE" || true
+                termux-clipboard-set < "$SAVED_FILE" 2>/dev/null && echo "Full output copied to clipboard" > /dev/tty || true
                 rm -f "$FULL_OUTPUT_FILE"
                 ;;
             *)
