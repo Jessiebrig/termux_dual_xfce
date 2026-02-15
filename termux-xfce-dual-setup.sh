@@ -368,10 +368,14 @@ EOF
     msg info "Installing Debian packages..."
     for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 conky-all htop
     do
-        msg info "Installing Debian package: $deb_pkg..."
-        if ! proot-distro login debian --shared-tmp -- apt install -y "$deb_pkg"; then
-            msg error "Failed to install Debian package: $deb_pkg"
-            exit 1
+        if proot-distro login debian --shared-tmp -- dpkg -l "$deb_pkg" 2>/dev/null | grep -q "^ii"; then
+            msg ok "$deb_pkg already installed, skipping..."
+        else
+            msg info "Installing Debian package: $deb_pkg..."
+            if ! proot-distro login debian --shared-tmp -- apt install -y "$deb_pkg"; then
+                msg error "Failed to install Debian package: $deb_pkg"
+                exit 1
+            fi
         fi
     done
     msg ok "Debian packages installed successfully"
@@ -437,30 +441,40 @@ EOF
     fi
     
     # Install aesthetic packages in Debian
-    if ! proot-distro login debian --shared-tmp -- command -v eza &>/dev/null; then
-        msg info "Installing aesthetic packages in Debian..."
+    msg info "Installing aesthetic packages in Debian..."
+    
+    # Setup eza repository first (required for eza installation)
+    if ! proot-distro login debian --shared-tmp -- dpkg -l eza 2>/dev/null | grep -q "^ii"; then
         proot-distro login debian --shared-tmp -- bash -c "
-            # Install eza (modern ls)
             apt install -y gpg curl
             mkdir -p /etc/apt/keyrings
             curl -fsSL https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
             echo 'deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main' | tee /etc/apt/sources.list.d/gierens.list
             chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
             apt update
-            apt install -y eza
-            
-            # Install bat (syntax-highlighted cat)
-            apt install -y bat
-            
-            # Install fastfetch
-            apt install -y fastfetch || echo 'fastfetch not available in Debian repos'
-            
-            # Install starship
-            curl -sS https://starship.rs/install.sh | sh -s -- -y
-        " || msg warn "Some aesthetic packages failed to install in Debian (non-critical)"
-    else
-        msg ok "Aesthetic packages already installed in Debian, skipping..."
+        " 2>/dev/null || true
     fi
+    
+    # Install aesthetic packages
+    for aesthetic_pkg in eza bat fastfetch
+    do
+        if proot-distro login debian --shared-tmp -- dpkg -l "$aesthetic_pkg" 2>/dev/null | grep -q "^ii"; then
+            msg ok "$aesthetic_pkg already installed, skipping..."
+        else
+            msg info "Installing $aesthetic_pkg..."
+            proot-distro login debian --shared-tmp -- apt install -y "$aesthetic_pkg" || msg warn "Failed to install $aesthetic_pkg (non-critical)"
+        fi
+    done
+    
+    # Install starship (uses different installation method)
+    if proot-distro login debian --shared-tmp -- command -v starship &>/dev/null; then
+        msg ok "starship already installed, skipping..."
+    else
+        msg info "Installing starship..."
+        proot-distro login debian --shared-tmp -- bash -c "curl -sS https://starship.rs/install.sh | sh -s -- -y" || msg warn "Failed to install starship (non-critical)"
+    fi
+    
+    msg ok "Aesthetic packages installation complete"
     
     # Download xrun utility
     msg info "Installing xrun utility..."
@@ -496,14 +510,14 @@ EOF
     msg ok "Setup finished successfully!"
     echo ""
     echo "Available commands:"
-    echo "  ${C_OK} xrun${C_RESET}                 - Interactive menu for all commands"
-    echo "  ${C_OK} xrun start_xfce${C_RESET}      - Launch native Termux XFCE"
-    echo "  ${C_OK} xrun start_debian_xfce${C_RESET} - Launch Debian XFCE"
-    echo "  ${C_OK} xrun start_debian${C_RESET}    - Enter Debian proot CLI"
-    echo "  ${C_OK} xrun drun <cmd>${C_RESET}      - Run Debian commands"
-    echo "  ${C_OK} xrun dgpu <cmd>${C_RESET}      - Run with hardware acceleration"
-    echo "  ${C_OK} xrun dfps <cmd>${C_RESET}      - Run with HW accel + FPS display"
-    echo "  ${C_OK} xrun kill_termux_x11${C_RESET} - Stop all X11 sessions"
+    echo -e "  ${C_OK}xrun${C_RESET}                 - Interactive menu for all commands"
+    echo -e "  ${C_OK}xrun start_xfce${C_RESET}      - Launch native Termux XFCE"
+    echo -e "  ${C_OK}xrun start_debian_xfce${C_RESET} - Launch Debian XFCE"
+    echo -e "  ${C_OK}xrun start_debian${C_RESET}    - Enter Debian proot CLI"
+    echo -e "  ${C_OK}xrun drun <cmd>${C_RESET}      - Run Debian commands"
+    echo -e "  ${C_OK}xrun dgpu <cmd>${C_RESET}      - Run with hardware acceleration"
+    echo -e "  ${C_OK}xrun dfps <cmd>${C_RESET}      - Run with HW accel + FPS display"
+    echo -e "  ${C_OK}xrun kill_termux_x11${C_RESET} - Stop all X11 sessions"
     echo ""
     
     # Prompt for full output on success
@@ -527,7 +541,7 @@ EOF
                 SAVED_FILE="$HOME/xfce_install_full_${TIMESTAMP}.txt"
                 cp "$FULL_OUTPUT_FILE" "$SAVED_FILE"
                 ls -t "$HOME"/xfce_install_full_*.txt 2>/dev/null | tail -n +6 | xargs -r rm -f
-                echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt"
+                echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt" > /dev/tty
                 less "$SAVED_FILE" || cat "$SAVED_FILE"
                 rm -f "$FULL_OUTPUT_FILE"
                 ;;
