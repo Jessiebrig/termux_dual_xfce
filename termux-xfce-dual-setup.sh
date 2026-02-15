@@ -71,7 +71,7 @@ cleanup() {
         fi
         
         # Prompt for full output
-        if [[ -f "$FULL_OUTPUT_FILE" ]]; then
+        if [[ -n "${FULL_OUTPUT_FILE:-}" && -f "$FULL_OUTPUT_FILE" ]]; then
             echo "" > /dev/tty
             echo -n "Full output: [v] View  [s] Save & view  [Enter] Skip: " > /dev/tty
             read -r full_response < /dev/tty
@@ -220,7 +220,7 @@ main() {
         else
             echo ""
             echo -n "Enter username for Debian proot: " > /dev/tty
-            read username < /dev/tty
+            read -r username < /dev/tty
             if [[ -z "$username" ]]; then
                 msg error "Username cannot be empty"
                 exit 1
@@ -230,7 +230,7 @@ main() {
     else
         echo ""
         echo -n "Enter username for Debian proot: " > /dev/tty
-        read username < /dev/tty
+        read -r username < /dev/tty
         if [[ -z "$username" ]]; then
             msg error "Username cannot be empty"
             exit 1
@@ -276,7 +276,8 @@ main() {
     
     # Install core dependencies (including util-linux for script command)
     msg info "Installing core dependencies..."
-    for pkg_name in proot-distro x11-repo tur-repo pulseaudio git util-linux; do
+    for pkg_name in proot-distro x11-repo tur-repo pulseaudio git util-linux
+    do
         if pkg list-installed 2>/dev/null | grep -q "^$pkg_name/"; then
             msg ok "$pkg_name already installed, skipping..."
         else
@@ -294,7 +295,8 @@ main() {
     msg info "Installing native Termux XFCE desktop..."
     for pkg_name in xfce4 xfce4-goodies xfce4-pulseaudio-plugin termux-x11-nightly \
         virglrenderer-android firefox starship \
-        fastfetch papirus-icon-theme eza bat htop; do
+        fastfetch papirus-icon-theme eza bat htop
+    do
         if pkg list-installed 2>/dev/null | grep -q "^$pkg_name/"; then
             msg ok "$pkg_name already installed, skipping..."
         else
@@ -364,7 +366,8 @@ EOF
     proot-distro login debian --shared-tmp -- apt upgrade -y
     
     msg info "Installing Debian packages..."
-    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 conky-all htop; do
+    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 conky-all htop
+    do
         msg info "Installing Debian package: $deb_pkg..."
         if ! proot-distro login debian --shared-tmp -- apt install -y "$deb_pkg"; then
             msg error "Failed to install Debian package: $deb_pkg"
@@ -504,7 +507,7 @@ EOF
     echo ""
     
     # Prompt for full output on success
-    if [[ -f "$FULL_OUTPUT_FILE" ]]; then
+    if [[ -n "${FULL_OUTPUT_FILE:-}" && -f "$FULL_OUTPUT_FILE" ]]; then
         echo -n "View log file? (y/N): " > /dev/tty
         read -r response < /dev/tty
         if [[ "$response" =~ ^[Yy]$ ]]; then
@@ -534,7 +537,6 @@ EOF
         esac
     fi
     
-    set +u  # Disable unbound variable check for sourcing
     source "$PREFIX/etc/bash.bashrc" 2>/dev/null || true
     termux-reload-settings 2>/dev/null || true
 }
