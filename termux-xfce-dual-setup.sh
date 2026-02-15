@@ -279,7 +279,7 @@ main() {
     
     # Install core dependencies (including util-linux for script command)
     msg info "Installing core dependencies..."
-    for pkg_name in proot-distro x11-repo tur-repo pulseaudio git util-linux
+    for pkg_name in proot-distro x11-repo tur-repo pulseaudio git util-linux termux-api
     do
         if pkg list-installed 2>/dev/null | grep -q "^$pkg_name/"; then
             msg ok "$pkg_name already installed, skipping..."
@@ -536,10 +536,15 @@ EOF
             echo "DEBUG: About to call less..." > /dev/tty
             less "$LOG_FILE" || true
             echo "DEBUG: Attempting clipboard copy..." > /dev/tty
-            if termux-clipboard-set < "$LOG_FILE" 2>/dev/null; then
-                echo "Log copied to clipboard" > /dev/tty
+            if command -v termux-clipboard-set &>/dev/null; then
+                echo "DEBUG: termux-clipboard-set command found" > /dev/tty
+                if cat "$LOG_FILE" | termux-clipboard-set 2>&1; then
+                    echo "Log copied to clipboard" > /dev/tty
+                else
+                    echo "DEBUG: Clipboard copy failed (exit code: $?)" > /dev/tty
+                fi
             else
-                echo "DEBUG: Clipboard copy failed" > /dev/tty
+                echo "DEBUG: termux-clipboard-set not found (install termux-api package)" > /dev/tty
             fi
         else
             echo "DEBUG: Skipped log viewing (response didn't match)" > /dev/tty
