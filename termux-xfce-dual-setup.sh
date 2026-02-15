@@ -535,7 +535,7 @@ EOF
             echo "" >> "$LOG_FILE" 2>/dev/null
             echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE" 2>/dev/null
             less "$LOG_FILE"
-            if termux-clipboard-set < "$LOG_FILE" 2>/dev/null; then
+            if termux-clipboard-set "$(cat "$LOG_FILE")" 2>/dev/null; then
                 echo "Log file copied to clipboard" > /dev/tty
             fi
         fi
@@ -546,7 +546,7 @@ EOF
         case "$full_response" in
             [Vv])
                 less "$FULL_OUTPUT_FILE"
-                if termux-clipboard-set < "$FULL_OUTPUT_FILE" 2>/dev/null; then
+                if termux-clipboard-set "$(cat "$FULL_OUTPUT_FILE")" 2>/dev/null; then
                     echo "Full output copied to clipboard" > /dev/tty
                 fi
                 rm -f "$FULL_OUTPUT_FILE"
@@ -561,7 +561,7 @@ EOF
                 echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null
                 echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt" > /dev/tty
                 less "$SAVED_FILE"
-                if termux-clipboard-set < "$SAVED_FILE" 2>/dev/null; then
+                if termux-clipboard-set "$(cat "$SAVED_FILE")" 2>/dev/null; then
                     echo "Full output copied to clipboard" > /dev/tty
                 fi
                 rm -f "$FULL_OUTPUT_FILE"
