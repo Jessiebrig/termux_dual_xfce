@@ -531,10 +531,17 @@ EOF
         if [[ "$response" =~ ^[Yy]$ ]]; then
             sed -i "1i=== Press 'q' to close this log viewer ===\n" "$LOG_FILE" 2>/dev/null
             echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE" 2>/dev/null
+            echo "DEBUG: About to call less..." > /dev/tty
             less "$LOG_FILE" || true
-            termux-clipboard-set < "$LOG_FILE" 2>/dev/null && echo "Log copied to clipboard" > /dev/tty || true
+            echo "DEBUG: Attempting clipboard copy..." > /dev/tty
+            if termux-clipboard-set < "$LOG_FILE" 2>/dev/null; then
+                echo "Log copied to clipboard" > /dev/tty
+            else
+                echo "DEBUG: Clipboard copy failed" > /dev/tty
+            fi
         fi
         
+        echo "DEBUG: After log viewer block" > /dev/tty
         echo "" > /dev/tty
         echo -n "Full output: [v] View  [s] Save & view  [Enter] Skip: " > /dev/tty
         read -r full_response < /dev/tty
