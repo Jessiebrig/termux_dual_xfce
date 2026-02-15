@@ -8,9 +8,10 @@ A lightweight script to set up native XFCE desktop environment and Debian proot 
 ## Key Features
 - **Dual Desktop Environment**: Native Termux XFCE + Debian proot XFCE
 - **Fast Installation**: Streamlined setup process with essential packages only
-- **Hardware Acceleration**: GPU support with auto-detection (Adreno/Mali)
+- **Hardware Acceleration**: GPU support with auto-detection (Adreno/Mali) and logging
 - **Modern CLI Tools**: Starship prompt, Fastfetch, eza, bat pre-installed
 - **System Monitor**: Conky integration for system stats
+- **Auto-launch Terminal**: Fastfetch displays automatically on desktop startup
 - **User-Friendly**: Simple username setup and automated configuration
 
 ## Requirements
@@ -54,15 +55,15 @@ Installation logs are saved to `~/xfce_install.log` for troubleshooting.
 ### Native Termux Environment
 - XFCE4 desktop with goodies and plugins
 - Firefox browser
-- Starship prompt, Fastfetch, eza, bat, htop
+- Starship prompt, Fastfetch (auto-displays on startup), eza, bat, htop
 - Papirus icon theme
-- Hardware acceleration (virglrenderer, optional Vulkan)
+- Hardware acceleration (virglrenderer, optional Vulkan) with status logging
 
 ### Debian Proot Environment
 - XFCE4 desktop with goodies
 - Conky system monitor (auto-starts with desktop)
-- Starship prompt, eza, bat, fastfetch, htop
-- Hardware acceleration (mesa-vulkan-kgsl)
+- Starship prompt, eza, bat, fastfetch (auto-displays on startup), htop
+- Hardware acceleration (mesa-vulkan-kgsl/Turnip) with status logging
 - Sudo configured for passwordless access
 
 ## Starting the Desktop
@@ -72,7 +73,7 @@ Installation logs are saved to `~/xfce_install.log` for troubleshooting.
 For easy access to all commands, use the interactive menu:
 
 ```bash
-launch
+xrun
 ```
 
 This provides a numbered menu to quickly start desktops or run utilities.
@@ -82,17 +83,17 @@ This provides a numbered menu to quickly start desktops or run utilities.
 Launch the native XFCE desktop environment:
 
 ```bash
-start_xfce
+xrun start_xfce
 ```
 
-This command initiates a Termux-X11 session, starts the XFCE4 desktop, and opens the Termux-X11 app directly into the desktop.
+This command initiates a Termux-X11 session, starts the XFCE4 desktop, and opens the Termux-X11 app directly into the desktop. A terminal with Fastfetch system info will automatically appear on startup, along with GPU acceleration status logging.
 
 ### Debian Proot CLI
 
 Access the Debian proot environment from terminal:
 
 ```bash
-start_debian
+xrun start_debian
 ```
 
 Note: The display is pre-configured in the Debian proot environment, allowing you to launch GUI applications directly from the terminal.
@@ -102,30 +103,30 @@ Note: The display is pre-configured in the Debian proot environment, allowing yo
 Launch Debian XFCE desktop environment:
 
 ```bash
-start_debian_xfce
+xrun start_debian_xfce
 ```
 
-This starts a full Debian XFCE desktop session within the proot environment.
+This starts a full Debian XFCE desktop session within the proot environment. A terminal with Fastfetch system info will automatically appear on startup, along with GPU acceleration status logging.
 
 ## Available Commands
 
 ### Interactive Menu
-- `launch` - Quick access menu with numbered options for all commands below
+- `xrun` - Quick access menu with numbered options for all commands below
 
 ### Desktop Launchers
-- `start_xfce` - Launch native Termux XFCE desktop
-- `start_debian_xfce` - Launch Debian proot XFCE desktop
-- `start_debian` - Enter Debian proot terminal (display pre-configured for GUI apps)
+- `xrun start_xfce` - Launch native Termux XFCE desktop
+- `xrun start_debian_xfce` - Launch Debian proot XFCE desktop
+- `xrun start_debian` - Enter Debian proot terminal (display pre-configured for GUI apps)
 
 ### Proot Utilities
-- `prun <command>` - Run Debian commands from Termux without entering proot shell
-- `zrun <command>` - Run Debian apps with hardware acceleration enabled
-- `zrunhud <command>` - Run with hardware acceleration and FPS overlay
+- `xrun drun <command>` - Run Debian commands from Termux without entering proot shell
+- `xrun dgpu <command>` - Run Debian apps with hardware acceleration enabled
+- `xrun dfps <command>` - Run with hardware acceleration and FPS overlay
 
 ### System Tools
-- `cp2menu` - Import Debian application shortcuts to Termux XFCE menu
-- `kill_termux_x11` - Stop all Termux-X11 sessions
+- `xrun kill_termux_x11` - Stop all Termux-X11 sessions
 - `app-installer` - GUI tool for installing apps beyond standard repositories
+- `~/xfce_gpu.log` - View GPU acceleration status logs for both environments
 
 ## 🙏 Credits & Acknowledgments
 

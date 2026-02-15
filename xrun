@@ -30,12 +30,17 @@ start_xfce() {
     am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
     sleep 1
 
-    # GPU detection
+    # GPU detection and logging
     gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
+    echo -e "${GREEN}[Termux XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log
     if echo "$gpu_info" | grep -iq "adreno"; then
+        echo -e "${GREEN}[Termux XFCE]${NC} Hardware acceleration: Enabled (Adreno)" | tee -a ~/xfce_gpu.log
         MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
     elif echo "$gpu_info" | grep -iq "mali"; then
+        echo -e "${GREEN}[Termux XFCE]${NC} Hardware acceleration: Enabled (Mali)" | tee -a ~/xfce_gpu.log
         MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android --angle-gl &
+    else
+        echo -e "${YELLOW}[Termux XFCE]${NC} Hardware acceleration: Software rendering" | tee -a ~/xfce_gpu.log
     fi
 
     dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe xfce4-session &
@@ -65,8 +70,17 @@ start_debian_xfce() {
         sleep 1
     fi
 
+    # GPU detection and logging
+    gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
+    echo -e "${GREEN}[Debian XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log
+    if echo "$gpu_info" | grep -iq "adreno"; then
+        echo -e "${GREEN}[Debian XFCE]${NC} Hardware acceleration: Enabled (Turnip/Adreno 6XX/7XX)" | tee -a ~/xfce_gpu.log
+    else
+        echo -e "${YELLOW}[Debian XFCE]${NC} Hardware acceleration: Software rendering (Turnip requires Adreno 6XX/7XX)" | tee -a ~/xfce_gpu.log
+    fi
+
     username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
-    proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
+    proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
 }
 
 # Function: Enter Debian proot CLI
@@ -76,19 +90,19 @@ start_debian() {
 }
 
 # Function: Run Debian commands
-prun() {
+drun() {
     username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
     proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 "$@"
 }
 
 # Function: Run with hardware acceleration
-zrun() {
+dgpu() {
     username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
     proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform "$@"
 }
 
 # Function: Run with hardware acceleration + FPS display
-zrunhud() {
+dfps() {
     username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
     proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform GALLIUM_HUD=fps "$@"
 }
@@ -97,36 +111,6 @@ zrunhud() {
 kill_termux_x11() {
     am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 >/dev/null 2>&1
     pkill -f termux
-}
-
-# Function: Copy Debian apps to menu
-cp2menu() {
-    debian_apps="$PREFIX/var/lib/proot-distro/installed-rootfs/debian/usr/share/applications"
-    termux_apps="$PREFIX/share/applications"
-
-    if [[ ! -d "$debian_apps" ]]; then
-        echo "Error: Debian applications directory not found"
-        exit 1
-    fi
-
-    echo "Available Debian applications:"
-    ls "$debian_apps"/*.desktop 2>/dev/null | nl
-
-    echo -n "Enter number to copy (or 'all' for all): " > /dev/tty
-    read choice < /dev/tty
-
-    if [[ "$choice" == "all" ]]; then
-        cp "$debian_apps"/*.desktop "$termux_apps/"
-        echo "All applications copied"
-    else
-        file=$(ls "$debian_apps"/*.desktop 2>/dev/null | sed -n "${choice}p")
-        if [[ -f "$file" ]]; then
-            cp "$file" "$termux_apps/"
-            echo "Copied: $(basename "$file")"
-        else
-            echo "Invalid selection"
-        fi
-    fi
 }
 
 # Function: Show interactive menu
@@ -149,24 +133,18 @@ show_menu() {
         echo "      Enter Debian proot terminal"
         echo ""
         echo -e "${CYAN}Utilities:${NC}"
-        echo -e "  ${GREEN}4${NC} - prun <command>"
+        echo -e "  ${GREEN}4${NC} - drun <command>"
         echo "      Run Debian commands from Termux"
         echo ""
-        echo -e "  ${GREEN}5${NC} - zrun <command>"
+        echo -e "  ${GREEN}5${NC} - dgpu <command>"
         echo "      Run with hardware acceleration"
         echo ""
-        echo -e "  ${GREEN}6${NC} - zrunhud <command>"
-        echo "      Run with HW accel + FPS display"
-        echo ""
-        echo -e "  ${GREEN}7${NC} - cp2menu"
-        echo "      Copy Debian apps to Termux menu"
-        echo ""
-        echo -e "  ${GREEN}8${NC} - Kill Termux-X11"
+        echo -e "  ${GREEN}6${NC} - Kill Termux-X11"
         echo "      Stop all X11 sessions"
         echo ""
         echo -e "  ${YELLOW}0${NC} - Exit"
         echo ""
-        echo -n "Select option [0-8]: " > /dev/tty
+        echo -n "Select option [0-6]: " > /dev/tty
         read choice < /dev/tty
         
         case $choice in
@@ -193,7 +171,7 @@ show_menu() {
                 echo -n "Enter command to run: " > /dev/tty
                 read cmd < /dev/tty
                 if [[ -n "$cmd" ]]; then
-                    prun $cmd
+                    drun $cmd
                 fi
                 echo -n "Press Enter to continue..." > /dev/tty
                 read < /dev/tty
@@ -203,28 +181,12 @@ show_menu() {
                 echo -n "Enter command to run: " > /dev/tty
                 read cmd < /dev/tty
                 if [[ -n "$cmd" ]]; then
-                    zrun $cmd
+                    dgpu $cmd
                 fi
                 echo -n "Press Enter to continue..." > /dev/tty
                 read < /dev/tty
                 ;;
             6)
-                echo ""
-                echo -n "Enter command to run: " > /dev/tty
-                read cmd < /dev/tty
-                if [[ -n "$cmd" ]]; then
-                    zrunhud $cmd
-                fi
-                echo -n "Press Enter to continue..." > /dev/tty
-                read < /dev/tty
-                ;;
-            7)
-                echo ""
-                cp2menu
-                echo -n "Press Enter to continue..." > /dev/tty
-                read < /dev/tty
-                ;;
-            8)
                 echo ""
                 echo -e "${YELLOW}Killing Termux-X11...${NC}"
                 kill_termux_x11
@@ -265,27 +227,23 @@ else
             start_debian
             clear
             ;;
-        prun)
+        drun)
             shift
-            prun "$@"
+            drun "$@"
             clear
             ;;
-        zrun)
+        dgpu)
             shift
-            zrun "$@"
+            dgpu "$@"
             clear
             ;;
-        zrunhud)
+        dfps)
             shift
-            zrunhud "$@"
+            dfps "$@"
             clear
             ;;
         kill_termux_x11)
             kill_termux_x11
-            clear
-            ;;
-        cp2menu)
-            cp2menu
             clear
             ;;
         *)
@@ -296,10 +254,9 @@ else
             echo "  xrun start_xfce       - Launch native Termux XFCE"
             echo "  xrun start_debian_xfce - Launch Debian XFCE"
             echo "  xrun start_debian     - Enter Debian proot CLI"
-            echo "  xrun prun <command>   - Run Debian commands"
-            echo "  xrun zrun <command>   - Run with hardware acceleration"
-            echo "  xrun zrunhud <command> - Run with HW accel + FPS display"
-            echo "  xrun cp2menu          - Copy Debian apps to menu"
+            echo "  xrun drun <command>   - Run Debian commands"
+            echo "  xrun dgpu <command>   - Run with hardware acceleration"
+            echo "  xrun dfps <command>   - Run with HW accel + FPS display"
             echo "  xrun kill_termux_x11  - Kill Termux-X11"
             exit 1
             ;;

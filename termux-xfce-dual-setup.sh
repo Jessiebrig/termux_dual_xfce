@@ -317,6 +317,17 @@ main() {
     msg info "Creating directory structure..."
     mkdir -p "$HOME"/{Desktop,Downloads,.config/xfce4/xfconf/xfce-perchannel-xml,.config/autostart}
     
+    # Auto-start terminal with fastfetch on Termux XFCE startup
+    cat > "$HOME/.config/autostart/terminal-fastfetch.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Exec=xfce4-terminal -e "bash -c 'fastfetch; exec bash'"
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=Terminal with Fastfetch
+EOF
+    
     # Initialize XFCE settings to prevent first-run errors
     msg info "Initializing XFCE settings..."
     export DISPLAY=:0
@@ -333,6 +344,7 @@ alias start_debian='xrun start_debian'
 alias ls='eza -lF --icons'
 alias cat='bat'
 eval "\$(starship init bash)"
+fastfetch
 EOF
     else
         msg ok "Aliases already configured, skipping..."
@@ -381,6 +393,19 @@ EOF
         msg ok "Sudo already configured for $username, skipping..."
     fi
     
+    # Auto-start terminal with fastfetch on Debian XFCE startup
+    mkdir -p "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config/autostart"
+    cat > "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config/autostart/terminal-fastfetch.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Exec=xfce4-terminal -e "bash -c 'fastfetch; exec bash'"
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=Terminal with Fastfetch
+EOF
+    chown -R $(stat -c '%u:%g' "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username") "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config" 2>/dev/null || true
+    
     # Setup Debian environment
     if ! grep -q "export DISPLAY=:0" "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.bashrc" 2>/dev/null; then
         msg info "Configuring Debian user environment..."
@@ -390,6 +415,7 @@ export DISPLAY=:0
 alias ls='eza -lF --icons' 2>/dev/null || alias ls='ls --color=auto'
 alias cat='bat' 2>/dev/null || alias cat='cat'
 eval "\$(starship init bash)" 2>/dev/null || true
+fastfetch 2>/dev/null || true
 EOF
     else
         msg ok "Debian user environment already configured, skipping..."
@@ -471,10 +497,9 @@ EOF
     echo "  ${C_OK} xrun start_xfce${C_RESET}      - Launch native Termux XFCE"
     echo "  ${C_OK} xrun start_debian_xfce${C_RESET} - Launch Debian XFCE"
     echo "  ${C_OK} xrun start_debian${C_RESET}    - Enter Debian proot CLI"
-    echo "  ${C_OK} xrun prun <cmd>${C_RESET}      - Run Debian commands"
-    echo "  ${C_OK} xrun zrun <cmd>${C_RESET}      - Run with hardware acceleration"
-    echo "  ${C_OK} xrun zrunhud <cmd>${C_RESET}   - Run with HW accel + FPS display"
-    echo "  ${C_OK} xrun cp2menu${C_RESET}        - Copy Debian apps to menu"
+    echo "  ${C_OK} xrun drun <cmd>${C_RESET}      - Run Debian commands"
+    echo "  ${C_OK} xrun dgpu <cmd>${C_RESET}      - Run with hardware acceleration"
+    echo "  ${C_OK} xrun dfps <cmd>${C_RESET}      - Run with HW accel + FPS display"
     echo "  ${C_OK} xrun kill_termux_x11${C_RESET} - Stop all X11 sessions"
     echo ""
     
