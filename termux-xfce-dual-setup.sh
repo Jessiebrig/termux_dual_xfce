@@ -528,7 +528,9 @@ EOF
         set +e  # Disable errexit for log viewing
         echo -n "View log file? (y/N): " > /dev/tty
         read -r response < /dev/tty
+        echo "DEBUG: response='$response'" > /dev/tty
         if [[ "$response" =~ ^[Yy]$ ]]; then
+            echo "DEBUG: Inside if block for log viewing" > /dev/tty
             sed -i "1i=== Press 'q' to close this log viewer ===\n" "$LOG_FILE" 2>/dev/null
             echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE" 2>/dev/null
             echo "DEBUG: About to call less..." > /dev/tty
@@ -539,6 +541,8 @@ EOF
             else
                 echo "DEBUG: Clipboard copy failed" > /dev/tty
             fi
+        else
+            echo "DEBUG: Skipped log viewing (response didn't match)" > /dev/tty
         fi
         
         echo "DEBUG: After log viewer block" > /dev/tty
