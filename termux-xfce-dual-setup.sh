@@ -563,6 +563,9 @@ EOF
     
     source "$PREFIX/etc/bash.bashrc" 2>/dev/null || true
     termux-reload-settings 2>/dev/null || true
+    
+    # Ensure clean exit
+    exit 0
 }
 
 # Check if script command is available and wrap execution
