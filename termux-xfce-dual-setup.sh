@@ -482,6 +482,13 @@ EOF
     curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/xrun -o "$PREFIX/bin/xrun"
     chmod +x "$PREFIX/bin/xrun"
     
+    # Verify xrun is accessible
+    if command -v xrun &>/dev/null; then
+        msg ok "xrun utility installed successfully"
+    else
+        msg warn "xrun installed but may require shell reload (run: source ~/.bashrc)"
+    fi
+    
     # Completion message
     echo ""
     echo "┌────────────────────────────────────┐"
@@ -499,6 +506,8 @@ EOF
     echo -e "  ${C_OK}xrun dgpu <command>${C_RESET}     - Run Debian apps with hardware acceleration"
     echo -e "  ${C_OK}xrun dfps <command>${C_RESET}     - Run Debian with hardware acceleration and FPS overlay"
     echo -e "  ${C_OK}xrun kill_termux_x11${C_RESET}    - Stop all Termux-X11 sessions"
+    echo ""
+    echo "Note: If 'xrun' command is not found, restart Termux or run: source ~/.bashrc"
     echo ""
     
     # Prompt for full output on success
