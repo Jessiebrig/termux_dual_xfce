@@ -567,8 +567,10 @@ EOF
     fi
     
     echo "DEBUG: 8" > /dev/tty
-    source "$PREFIX/etc/bash.bashrc" 2>/dev/null || true
+    # Don't source bashrc as it may fail with fastfetch/starship in non-interactive context
+    # source "$PREFIX/etc/bash.bashrc" 2>/dev/null || true
     echo "DEBUG: 9" > /dev/tty
+    # termux-reload-settings will handle the reload
     termux-reload-settings 2>/dev/null || true
     echo "DEBUG: 10" > /dev/tty
     
