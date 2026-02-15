@@ -551,18 +551,28 @@ EOF
                 sed -i "1i=== Press 'q' to close this log viewer ===\n" "$SAVED_FILE" 2>/dev/null
                 echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null
                 echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt" > /dev/tty
+                echo "DEBUG: 1" > /dev/tty
                 less "$SAVED_FILE" || true
+                echo "DEBUG: 2" > /dev/tty
                 rm -f "$FULL_OUTPUT_FILE"
+                echo "DEBUG: 3" > /dev/tty
                 ;;
             *)
+                echo "DEBUG: 4" > /dev/tty
                 rm -f "$FULL_OUTPUT_FILE"
+                echo "DEBUG: 5" > /dev/tty
                 ;;
         esac
+        echo "DEBUG: 6" > /dev/tty
         set -e  # Re-enable errexit
+        echo "DEBUG: 7" > /dev/tty
     fi
     
+    echo "DEBUG: 8" > /dev/tty
     source "$PREFIX/etc/bash.bashrc" 2>/dev/null || true
+    echo "DEBUG: 9" > /dev/tty
     termux-reload-settings 2>/dev/null || true
+    echo "DEBUG: 10" > /dev/tty
     
     # Ensure clean exit
     exit 0
