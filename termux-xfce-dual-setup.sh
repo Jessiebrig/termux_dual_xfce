@@ -13,8 +13,9 @@ C_WARN='\033[38;5;214m'   # Orange
 C_ERR='\033[38;5;196m'    # Bright red
 C_RESET='\033[0m'
 
-# Log file
+# Log files
 LOG_FILE="$HOME/xfce_install.log"
+FULL_OUTPUT_FILE="$HOME/.xfce_install_full_temp.txt"
 if [[ "$CLEAR_LOG_ON_START" == "true" ]]; then
     echo "=== Installation started at $(date) ===" > "$LOG_FILE"
 else
@@ -40,6 +41,19 @@ msg() {
     log "[$type] $*"
 }
 
+# Show troubleshooting tips
+show_troubleshooting() {
+    echo ""
+    echo "Troubleshooting:"
+    echo "  1. Check your internet connection"
+    echo "  2. Try a different mirror: termux-change-repo"
+    echo "  3. Restart Termux and run the script again"
+    echo "  4. If issue persists, install the package manually:"
+    echo "     pkg install <package-name>"
+    echo "     Then re-run this script (it will skip installed packages)"
+    echo ""
+}
+
 # Cleanup on exit
 cleanup() {
     local exit_code=$?
@@ -55,6 +69,31 @@ cleanup() {
         if [[ "$response" =~ ^[Yy]$ ]]; then
             less "$LOG_FILE" || cat "$LOG_FILE"
         fi
+        
+        # Prompt for full output
+        if [[ -f "$FULL_OUTPUT_FILE" ]]; then
+            echo "" > /dev/tty
+            echo -n "Full output: [v] View  [s] Save & view  [Enter] Skip: " > /dev/tty
+            read -r full_response < /dev/tty
+            case "$full_response" in
+                [Vv])
+                    less "$FULL_OUTPUT_FILE" || cat "$FULL_OUTPUT_FILE"
+                    rm -f "$FULL_OUTPUT_FILE"
+                    ;;
+                [Ss])
+                    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                    SAVED_FILE="$HOME/xfce_install_full_${TIMESTAMP}.txt"
+                    cp "$FULL_OUTPUT_FILE" "$SAVED_FILE"
+                    ls -t "$HOME"/xfce_install_full_*.txt 2>/dev/null | tail -n +6 | xargs -r rm -f
+                    echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt"
+                    less "$SAVED_FILE" || cat "$SAVED_FILE"
+                    rm -f "$FULL_OUTPUT_FILE"
+                    ;;
+                *)
+                    rm -f "$FULL_OUTPUT_FILE"
+                    ;;
+            esac
+        fi
     fi
 }
 trap cleanup EXIT
@@ -63,9 +102,9 @@ trap cleanup EXIT
 verify_system() {
     log "FUNCTION: verify_system() - Starting system verification"
     echo ""
-    echo "┌──────────────────────────────────────────┐"
-    echo "│     Pre-Installation System Checks       │"
-    echo "└──────────────────────────────────────────┘"
+    echo "┌────────────────────────────────────┐"
+    echo "│   Pre-Installation System Checks   │"
+    echo "└────────────────────────────────────┘"
     echo ""
     
     local errors=0
@@ -130,7 +169,7 @@ verify_system() {
         msg error "System requirements not met ($errors critical error(s))"
         echo ""
         echo "Requirements:"
-        echo "  • Android OS (any version)"
+        echo "  • Android 7.0+ (API 24 or higher)"
         echo "  • ARM64/aarch64 device"
         echo "  • Termux from GitHub (not Play Store)"
         echo "  • 8GB+ free storage space"
@@ -152,9 +191,9 @@ main() {
     log "FUNCTION: main() - Starting main installation"
     clear
     echo ""
-    echo "┌──────────────────────────────────┐"
-    echo "│  Native + Debian XFCE Setup      │"
-    echo "└──────────────────────────────────┘"
+    echo "┌────────────────────────────────────┐"
+    echo "│   Native + Debian XFCE Setup       │"
+    echo "└────────────────────────────────────┘"
     echo ""
     
     verify_system
@@ -163,8 +202,6 @@ main() {
     echo "  • Native Termux XFCE desktop"
     echo "  • Debian proot with XFCE"
     echo "  • Hardware acceleration support"
-    echo ""
-    msg warn "Termux-X11 app required: https://github.com/termux/termux-x11/releases"
     echo ""
     echo "Press Enter to continue or Ctrl+C to cancel..." > /dev/tty
     read -r < /dev/tty
@@ -207,7 +244,7 @@ main() {
     # Update repositories
     msg info "Updating package repositories..."
     if ! pkg update -y; then
-        msg warn "Package update failed, trying mirror selection..."
+        msg warn "Update failed, please select a mirror..."
         termux-change-repo
         # Wait for termux-change-repo to complete and clear locks
         sleep 2
@@ -215,12 +252,7 @@ main() {
         msg info "Retrying package update..."
         if ! pkg update -y; then
             msg error "Failed to update package lists after changing mirror"
-            echo ""
-            echo "Troubleshooting:"
-            echo "  1. Check your internet connection"
-            echo "  2. Try a different mirror in termux-change-repo"
-            echo "  3. Restart Termux and try again"
-            echo ""
+            show_troubleshooting
             exit 1
         fi
     fi
@@ -228,7 +260,9 @@ main() {
     
     # Setup storage
     if [[ ! -d ~/storage ]]; then
-        msg info "Setting up storage access..."
+        echo ""
+        msg info "Requesting storage access..."
+        echo "Tap 'Allow' when prompted"
         termux-setup-storage
     else
         msg ok "Storage access already configured"
@@ -240,23 +274,24 @@ main() {
         msg warn "Package upgrade encountered issues, continuing..."
     fi
     
-    # Install core dependencies
+    # Install core dependencies (including util-linux for script command)
     msg info "Installing core dependencies..."
-    for pkg_name in proot-distro x11-repo tur-repo pulseaudio git; do
+    for pkg_name in proot-distro x11-repo tur-repo pulseaudio git util-linux; do
         if pkg list-installed 2>/dev/null | grep -q "^$pkg_name/"; then
             msg ok "$pkg_name already installed, skipping..."
         else
             msg info "Installing $pkg_name..."
             if ! pkg install -y "$pkg_name"; then
                 msg error "Failed to install $pkg_name"
+                show_troubleshooting
                 exit 1
             fi
         fi
     done
     msg ok "Core dependencies installed successfully"
     
-    # Install XFCE and essentials
-    msg info "Installing XFCE desktop environment..."
+    # Install native Termux XFCE
+    msg info "Installing native Termux XFCE desktop..."
     for pkg_name in xfce4 xfce4-goodies xfce4-pulseaudio-plugin termux-x11-nightly \
         virglrenderer-android firefox starship \
         fastfetch papirus-icon-theme eza bat htop; do
@@ -266,18 +301,14 @@ main() {
             msg info "Installing $pkg_name..."
             if ! pkg install -y "$pkg_name"; then
                 msg error "Failed to install $pkg_name"
-                echo ""
-                echo "Possible issues:"
-                echo "  1. Network connection unstable"
-                echo "  2. Mirror is down - try: termux-change-repo"
-                echo "  3. Insufficient storage space"
+                show_troubleshooting
                 exit 1
             fi
         fi
     done
     
     # Try to install optional Vulkan driver (may not be available on all devices)
-    msg info "Installing optional GPU drivers..."
+    msg info "Installing experimental GPU drivers..."
     pkg install -y mesa-vulkan-icd-freedreno-dri3 2>/dev/null || msg warn "Vulkan driver not available for this device (optional)"
     
     msg ok "XFCE desktop environment installed successfully"
@@ -298,7 +329,7 @@ main() {
         cat >> "$PREFIX/etc/bash.bashrc" <<EOF
 
 # XFCE Setup Aliases
-alias start_debian='proot-distro login debian --user $username --shared-tmp'
+alias start_debian='xrun start_debian'
 alias ls='eza -lF --icons'
 alias cat='bat'
 eval "\$(starship init bash)"
@@ -364,11 +395,11 @@ EOF
         msg ok "Debian user environment already configured, skipping..."
     fi
     
-    # Setup hardware acceleration in Debian
+    # Setup hardware acceleration in Debian (Turnip driver for Adreno 6XX/7XX)
     if [[ ! -f "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
         msg info "Configuring hardware acceleration..."
         proot-distro login debian --shared-tmp -- bash -c "
-            curl -sLO https://github.com/phoenixbyrd/Termux_XFCE/raw/main/mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
+            curl -sLO https://github.com/MatrixhKa/mesa-turnip/releases/download/24.1.0/mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
             apt install -y ./mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
             rm mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
         "
@@ -381,9 +412,9 @@ EOF
         msg info "Installing aesthetic packages in Debian..."
         proot-distro login debian --shared-tmp -- bash -c "
             # Install eza (modern ls)
-            apt install -y gpg wget
+            apt install -y gpg curl
             mkdir -p /etc/apt/keyrings
-            wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
+            curl -fsSL https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
             echo 'deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main' | tee /etc/apt/sources.list.d/gierens.list
             chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
             apt update
@@ -402,139 +433,10 @@ EOF
         msg ok "Aesthetic packages already installed in Debian, skipping..."
     fi
     
-    # Create start script
-    msg info "Creating launcher scripts..."
-    cat > "$PREFIX/bin/start_xfce" <<'STARTEOF'
-#!/bin/bash
-kill -9 $(pgrep -f "termux.x11") 2>/dev/null
-
-# Setup audio (experimental: Samsung-specific fix, may work for other devices)
-if [[ "$(getprop ro.product.manufacturer | tr '[:upper:]' '[:lower:]')" == "samsung" ]]; then
-    LD_PRELOAD=/system/lib64/libskcodec.so pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
-else
-    pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
-fi
-
-export PULSE_SERVER=127.0.0.1
-export XDG_RUNTIME_DIR=${TMPDIR}
-export DISPLAY=:0
-
-# Ensure D-Bus directories exist
-mkdir -p "$XDG_RUNTIME_DIR"
-
-termux-x11 :0 >/dev/null &
-sleep 3
-
-am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
-sleep 1
-
-# GPU detection
-gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
-if echo "$gpu_info" | grep -iq "adreno"; then
-    MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
-elif echo "$gpu_info" | grep -iq "mali"; then
-    MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android --angle-gl &
-fi
-
-dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe xfce4-session &
-STARTEOF
-    chmod +x "$PREFIX/bin/start_xfce"
-    
-    # Create start_debian_xfce script
-    cat > "$PREFIX/bin/start_debian_xfce" <<'DEBIANEOF'
-#!/bin/bash
-# Start Termux X11 if not already running
-if ! pgrep -f "termux-x11" > /dev/null; then
-    kill -9 $(pgrep -f "termux.x11") 2>/dev/null
-    
-    # Setup audio (experimental: Samsung-specific fix, may work for other devices)
-    if [[ "$(getprop ro.product.manufacturer | tr '[:upper:]' '[:lower:]')" == "samsung" ]]; then
-        LD_PRELOAD=/system/lib64/libskcodec.so pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
-    else
-        pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
-    fi
-    
-    export PULSE_SERVER=127.0.0.1
-    export XDG_RUNTIME_DIR=${TMPDIR}
-    mkdir -p "$XDG_RUNTIME_DIR"
-    
-    termux-x11 :0 >/dev/null &
-    sleep 3
-    
-    am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
-    sleep 1
-fi
-
-username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
-proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
-DEBIANEOF
-    chmod +x "$PREFIX/bin/start_debian_xfce"
-    
-    # Create utility scripts
-    cat > "$PREFIX/bin/prun" <<'PRUNEOF'
-#!/bin/bash
-username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
-proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 "$@"
-PRUNEOF
-    chmod +x "$PREFIX/bin/prun"
-    
-    cat > "$PREFIX/bin/zrun" <<'ZRUNEOF'
-#!/bin/bash
-username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
-proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform "$@"
-ZRUNEOF
-    chmod +x "$PREFIX/bin/zrun"
-    
-    cat > "$PREFIX/bin/zrunhud" <<'ZHUDEOF'
-#!/bin/bash
-username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
-proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform GALLIUM_HUD=fps "$@"
-ZHUDEOF
-    chmod +x "$PREFIX/bin/zrunhud"
-    
-    cat > "$PREFIX/bin/kill_termux_x11" <<'KILLEOF'
-#!/bin/bash
-am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 >/dev/null 2>&1
-pkill -f termux
-KILLEOF
-    chmod +x "$PREFIX/bin/kill_termux_x11"
-    
-    # Create cp2menu utility
-    cat > "$PREFIX/bin/cp2menu" <<'MENUEOF'
-#!/bin/bash
-debian_apps="$PREFIX/var/lib/proot-distro/installed-rootfs/debian/usr/share/applications"
-termux_apps="$PREFIX/share/applications"
-
-if [[ ! -d "$debian_apps" ]]; then
-    echo "Error: Debian applications directory not found"
-    exit 1
-fi
-
-echo "Available Debian applications:"
-ls "$debian_apps"/*.desktop 2>/dev/null | nl
-
-echo -n "Enter number to copy (or 'all' for all): " > /dev/tty
-read choice < /dev/tty
-
-if [[ "$choice" == "all" ]]; then
-    cp "$debian_apps"/*.desktop "$termux_apps/"
-    echo "All applications copied"
-else
-    file=$(ls "$debian_apps"/*.desktop 2>/dev/null | sed -n "${choice}p")
-    if [[ -f "$file" ]]; then
-        cp "$file" "$termux_apps/"
-        echo "Copied: $(basename "$file")"
-    else
-        echo "Invalid selection"
-    fi
-fi
-MENUEOF
-    chmod +x "$PREFIX/bin/cp2menu"
-    
-    # Download launch menu
-    msg info "Installing launch menu..."
-    curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/launch -o "$PREFIX/bin/launch"
-    chmod +x "$PREFIX/bin/launch"
+    # Download xrun utility
+    msg info "Installing xrun utility..."
+    curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/xrun -o "$PREFIX/bin/xrun"
+    chmod +x "$PREFIX/bin/xrun"
     
     # Install app-installer
     msg info "Installing app-installer utility..."
@@ -556,39 +458,65 @@ Categories=System;
 Terminal=false
 EOF
     
-    # Setup Conky
-    if [[ ! -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config/conky" ]]; then
-        msg info "Configuring Conky system monitor..."
-        curl -sL https://github.com/phoenixbyrd/Termux_XFCE/raw/main/conky.tar.gz | tar -xz -C "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/"
-        
-        cp "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/usr/share/applications/conky.desktop" "$HOME/.config/autostart/"
-        sed -i "s|^Exec=.*|Exec=prun conky -c .config/conky/Alterf/Alterf.conf|" "$HOME/.config/autostart/conky.desktop"
-    else
-        msg ok "Conky already configured, skipping..."
-    fi
-    
     # Completion message
     echo ""
-    echo "┌──────────────────────────────────┐"
-    echo "│  Installation Complete!          │"
-    echo "└──────────────────────────────────┘"
+    echo "┌────────────────────────────────────┐"
+    echo "│      Installation Complete!        │"
+    echo "└────────────────────────────────────┘"
     echo ""
     msg ok "Setup finished successfully!"
     echo ""
     echo "Available commands:"
-    echo "  ${C_OK} start_xfce${C_RESET}        - Launch native Termux XFCE"
-    echo "  ${C_OK} start_debian_xfce${C_RESET} - Launch Debian XFCE"
-    echo "  ${C_OK} start_debian${C_RESET}      - Enter Debian proot CLI"
-    echo "  ${C_OK} prun${C_RESET}              - Run Debian commands"
-    echo "  ${C_OK} zrun${C_RESET}              - Run with hardware acceleration"
-    echo "  ${C_OK} zrunhud${C_RESET}           - Run with HW accel + FPS display"
-    echo "  ${C_OK} cp2menu${C_RESET}           - Copy Debian apps to menu"
-    echo "  ${C_OK} launch${C_RESET}            - Interactive menu for all commands"
+    echo "  ${C_OK} xrun${C_RESET}                 - Interactive menu for all commands"
+    echo "  ${C_OK} xrun start_xfce${C_RESET}      - Launch native Termux XFCE"
+    echo "  ${C_OK} xrun start_debian_xfce${C_RESET} - Launch Debian XFCE"
+    echo "  ${C_OK} xrun start_debian${C_RESET}    - Enter Debian proot CLI"
+    echo "  ${C_OK} xrun prun <cmd>${C_RESET}      - Run Debian commands"
+    echo "  ${C_OK} xrun zrun <cmd>${C_RESET}      - Run with hardware acceleration"
+    echo "  ${C_OK} xrun zrunhud <cmd>${C_RESET}   - Run with HW accel + FPS display"
+    echo "  ${C_OK} xrun cp2menu${C_RESET}        - Copy Debian apps to menu"
+    echo "  ${C_OK} xrun kill_termux_x11${C_RESET} - Stop all X11 sessions"
     echo ""
+    
+    # Prompt for full output on success
+    if [[ -f "$FULL_OUTPUT_FILE" ]]; then
+        echo -n "View log file? (y/N): " > /dev/tty
+        read -r response < /dev/tty
+        if [[ "$response" =~ ^[Yy]$ ]]; then
+            less "$LOG_FILE" || cat "$LOG_FILE"
+        fi
+        
+        echo "" > /dev/tty
+        echo -n "Full output: [v] View  [s] Save & view  [Enter] Skip: " > /dev/tty
+        read -r full_response < /dev/tty
+        case "$full_response" in
+            [Vv])
+                less "$FULL_OUTPUT_FILE" || cat "$FULL_OUTPUT_FILE"
+                rm -f "$FULL_OUTPUT_FILE"
+                ;;
+            [Ss])
+                TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                SAVED_FILE="$HOME/xfce_install_full_${TIMESTAMP}.txt"
+                cp "$FULL_OUTPUT_FILE" "$SAVED_FILE"
+                ls -t "$HOME"/xfce_install_full_*.txt 2>/dev/null | tail -n +6 | xargs -r rm -f
+                echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt"
+                less "$SAVED_FILE" || cat "$SAVED_FILE"
+                rm -f "$FULL_OUTPUT_FILE"
+                ;;
+            *)
+                rm -f "$FULL_OUTPUT_FILE"
+                ;;
+        esac
+    fi
     
     set +u  # Disable unbound variable check for sourcing
     source "$PREFIX/etc/bash.bashrc" 2>/dev/null || true
     termux-reload-settings 2>/dev/null || true
 }
 
-main "$@"
+# Check if script command is available and wrap execution
+if command -v script &>/dev/null && [[ "$1" != "--no-script" ]]; then
+    script -q -c "bash '$0' --no-script" "$FULL_OUTPUT_FILE"
+else
+    main "$@"
+fi

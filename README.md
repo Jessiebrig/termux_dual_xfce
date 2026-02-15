@@ -22,11 +22,26 @@ A lightweight script to set up native XFCE desktop environment and Debian proot 
 - **Storage**: 8GB+ free space recommended
 - **RAM**: 3GB+ recommended
 
-## Installation
+## Quick Start
+
+### Step 1: Download Required Apps
+
+Download and install both apps on your Android device:
+
+1. **Termux** - [Download from GitHub](https://github.com/termux/termux-app/releases/latest) or [F-Droid](https://f-droid.org/packages/com.termux/) (select arm64-v8a version)
+2. **Termux-X11** - [Download from GitHub](https://github.com/termux/termux-x11/releases/latest) (select arm64-v8a version)
+
+⚠️ **Important**: Use Termux from GitHub or F-Droid for full functionality.
+
+### Step 2: Run Installation
+
+Once both Termux and Termux-X11 are installed, open Termux and copy-paste this command, then follow the installation prompts:
 
 ```bash
 curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/refs/heads/main/termux-xfce-dual-setup.sh -o termux-xfce-dual-setup.sh && bash termux-xfce-dual-setup.sh
 ```
+
+## Installation Details
 
 During installation, you'll be prompted to:
 1. Enter a username for the Debian proot environment
@@ -49,11 +64,6 @@ Installation logs are saved to `~/xfce_install.log` for troubleshooting.
 - Starship prompt, eza, bat, fastfetch, htop
 - Hardware acceleration (mesa-vulkan-kgsl)
 - Sudo configured for passwordless access
-
-### Special Features
-- GPU auto-detection (Adreno vs Mali configuration)
-- Shared /tmp between Termux and Debian
-- Display pre-configured (DISPLAY=:0) in both environments
 
 ## Starting the Desktop
 
@@ -116,10 +126,6 @@ This starts a full Debian XFCE desktop session within the proot environment.
 - `cp2menu` - Import Debian application shortcuts to Termux XFCE menu
 - `kill_termux_x11` - Stop all Termux-X11 sessions
 - `app-installer` - GUI tool for installing apps beyond standard repositories
-
-## About
-
-Created and maintained by [Jessiebrig](https://github.com/Jessiebrig). This project aims to provide an easy-to-use, automated setup for running full desktop environments on Android devices through Termux.
 
 ## 🙏 Credits & Acknowledgments
 
