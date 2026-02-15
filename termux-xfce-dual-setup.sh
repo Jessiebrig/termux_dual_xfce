@@ -80,13 +80,11 @@ cleanup() {
                     [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]] && rm -f "$FULL_OUTPUT_FILE"
                     ;;
                 [Ss])
-                    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-                    SAVED_FILE="$HOME/xfce_install_full_${TIMESTAMP}.txt"
+                    SAVED_FILE="$HOME/xfce_install_full.txt"
                     cp "$FULL_OUTPUT_FILE" "$SAVED_FILE" || true
-                    ls -t "$HOME"/xfce_install_full_*.txt 2>/dev/null | tail -n +6 | xargs -r rm -f 2>/dev/null || true
                     sed -i "1i=== Press 'q' to close this log viewer ===\n" "$SAVED_FILE" 2>/dev/null || true
                     echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null || true
-                    echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt"
+                    echo "Saved to ~/xfce_install_full.txt"
                     less "$SAVED_FILE" || true
                     [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]] && rm -f "$FULL_OUTPUT_FILE"
                     ;;
@@ -523,14 +521,11 @@ EOF
                 rm -f "$FULL_OUTPUT_FILE"
                 ;;
             [Ss])
-                TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-                SAVED_FILE="$HOME/xfce_install_full_${TIMESTAMP}.txt"
+                SAVED_FILE="$HOME/xfce_install_full.txt"
                 cp "$FULL_OUTPUT_FILE" "$SAVED_FILE"
-                # Keep only the 5 most recent saved files
-                ls -t "$HOME"/xfce_install_full_*.txt 2>/dev/null | tail -n +6 | xargs -r rm -f 2>/dev/null
                 sed -i "1i=== Press 'q' to close this log viewer ===\n" "$SAVED_FILE" 2>/dev/null
                 echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null
-                echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt" > /dev/tty
+                echo "Saved to ~/xfce_install_full.txt" > /dev/tty
                 less "$SAVED_FILE" || true
                 rm -f "$FULL_OUTPUT_FILE"
                 ;;
