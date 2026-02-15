@@ -479,14 +479,22 @@ EOF
     
     # Download xrun utility
     msg info "Installing xrun utility..."
-    curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/xrun -o "$PREFIX/bin/xrun"
-    chmod +x "$PREFIX/bin/xrun"
+    if curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/xrun -o "$PREFIX/bin/xrun"; then
+        chmod +x "$PREFIX/bin/xrun"
+        # Also create a copy in home directory as backup
+        cp "$PREFIX/bin/xrun" "$HOME/xrun" 2>/dev/null || true
+        chmod +x "$HOME/xrun" 2>/dev/null || true
+    else
+        msg error "Failed to download xrun utility"
+        exit 1
+    fi
     
     # Verify xrun is accessible
     if command -v xrun &>/dev/null; then
         msg ok "xrun utility installed successfully"
     else
-        msg warn "xrun installed but may require shell reload (run: source ~/.bashrc)"
+        msg warn "xrun installed at $PREFIX/bin/xrun but not in PATH"
+        msg warn "You can run it with: $PREFIX/bin/xrun or ~/xrun"
     fi
     
     # Completion message
@@ -498,7 +506,7 @@ EOF
     msg ok "Setup finished successfully!"
     echo ""
     echo "Available commands:"
-    echo -e "  ${C_OK}xrun${C_RESET}                    - Quick access menu with numbered options"
+    echo -e "  ${C_OK}xrun${C_RESET} or ${C_OK}~/xrun${C_RESET}        - Quick access menu with numbered options"
     echo -e "  ${C_OK}xrun start_xfce${C_RESET}         - Launch native Termux XFCE desktop"
     echo -e "  ${C_OK}xrun start_debian_xfce${C_RESET}  - Launch Debian proot XFCE desktop"
     echo -e "  ${C_OK}xrun start_debian${C_RESET}       - Enter Debian proot terminal"
@@ -507,7 +515,7 @@ EOF
     echo -e "  ${C_OK}xrun dfps <command>${C_RESET}     - Run Debian with hardware acceleration and FPS overlay"
     echo -e "  ${C_OK}xrun kill_termux_x11${C_RESET}    - Stop all Termux-X11 sessions"
     echo ""
-    echo "Note: If 'xrun' command is not found, restart Termux or run: source ~/.bashrc"
+    echo "Note: If 'xrun' is not found, use '~/xrun' or restart Termux"
     echo ""
     
     # Prompt for full output on success
