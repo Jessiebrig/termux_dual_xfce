@@ -532,6 +532,7 @@ EOF
             sed -i "1i=== Press 'q' to close this log viewer ===\n" "$LOG_FILE" 2>/dev/null
             echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE" 2>/dev/null
             less "$LOG_FILE" || true
+            termux-clipboard-set < "$LOG_FILE" 2>/dev/null && echo "Log copied to clipboard" > /dev/tty || true
         fi
         
         echo "" > /dev/tty
