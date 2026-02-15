@@ -39,7 +39,7 @@ Download and install both apps on your Android device:
 Once both Termux and Termux-X11 are installed, open Termux and copy-paste this command, then follow the installation prompts:
 
 ```bash
-curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/refs/heads/main/termux-xfce-dual-setup.sh -o termux-xfce-dual-setup.sh && bash termux-xfce-dual-setup.sh
+curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/refs/heads/feature/gpu-autostart/termux-xfce-dual-setup.sh -o termux-xfce-dual-setup.sh && bash termux-xfce-dual-setup.sh
 ```
 
 ## Installation Details
