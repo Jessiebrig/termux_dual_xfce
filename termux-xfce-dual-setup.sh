@@ -564,8 +564,6 @@ EOF
                 ;;
         esac
         echo "DEBUG: 6" > /dev/tty
-        set -e  # Re-enable errexit
-        echo "DEBUG: 7" > /dev/tty
     fi
     
     echo "DEBUG: 8" > /dev/tty
