@@ -535,10 +535,6 @@ EOF
             echo "" >> "$LOG_FILE" 2>/dev/null
             echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE" 2>/dev/null
             less "$LOG_FILE"
-            # Stream file to clipboard without loading into memory
-            if cat "$LOG_FILE" | termux-clipboard-set 2>/dev/null; then
-                echo "Log file copied to clipboard" > /dev/tty
-            fi
         fi
         
         echo "" > /dev/tty
@@ -547,10 +543,6 @@ EOF
         case "$full_response" in
             [Vv])
                 less "$FULL_OUTPUT_FILE"
-                # Stream file to clipboard without loading into memory
-                if cat "$FULL_OUTPUT_FILE" | termux-clipboard-set 2>/dev/null; then
-                    echo "Full output copied to clipboard" > /dev/tty
-                fi
                 # Only delete if it's the temp file (not the main log)
                 if [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]]; then
                     rm -f "$FULL_OUTPUT_FILE"
@@ -567,10 +559,6 @@ EOF
                 echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null
                 echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt" > /dev/tty
                 less "$SAVED_FILE"
-                # Stream file to clipboard without loading into memory
-                if cat "$SAVED_FILE" | termux-clipboard-set 2>/dev/null; then
-                    echo "Full output copied to clipboard" > /dev/tty
-                fi
                 # Only delete if it's the temp file (not the main log)
                 if [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]]; then
                     rm -f "$FULL_OUTPUT_FILE"
