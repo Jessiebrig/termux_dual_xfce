@@ -77,7 +77,6 @@ cleanup() {
             case "$full_response" in
                 [Vv])
                     less "$FULL_OUTPUT_FILE" || true
-                    termux-clipboard-set < "$FULL_OUTPUT_FILE" 2>/dev/null && echo "Full output copied to clipboard" > /dev/tty || true
                     [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]] && rm -f "$FULL_OUTPUT_FILE"
                     ;;
                 [Ss])
@@ -89,7 +88,6 @@ cleanup() {
                     echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null || true
                     echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt"
                     less "$SAVED_FILE" || true
-                    termux-clipboard-set < "$SAVED_FILE" 2>/dev/null && echo "Full output copied to clipboard" || true
                     [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]] && rm -f "$FULL_OUTPUT_FILE"
                     ;;
                 *)
@@ -116,7 +114,13 @@ verify_system() {
     # Check Android OS
     if [[ "$(uname -o)" == "Android" ]]; then
         local android_version=$(getprop ro.build.version.release)
-        msg ok "Operating System: Android $android_version"
+        local api_level=$(getprop ro.build.version.sdk)
+        if [[ $api_level -ge 24 ]]; then
+            msg ok "Operating System: Android $android_version (API $api_level)"
+        else
+            msg warn "Operating System: Android $android_version (API $api_level) - Android 7.0+ recommended"
+            ((warnings++))
+        fi
     else
         msg error "Not running on Android OS"
         ((errors++))
@@ -133,8 +137,11 @@ verify_system() {
     local arch=$(uname -m)
     if [[ "$arch" == "aarch64" ]]; then
         msg ok "CPU Architecture: $arch (ARM64)"
+    elif [[ "$arch" == "armv7l" || "$arch" == "armv8l" ]]; then
+        msg warn "CPU Architecture: $arch (32-bit ARM - performance may be limited)"
+        ((warnings++))
     else
-        msg error "Unsupported architecture: $arch (requires aarch64/ARM64)"
+        msg error "Unsupported architecture: $arch"
         ((errors++))
     fi
     
@@ -173,7 +180,7 @@ verify_system() {
         echo ""
         echo "Requirements:"
         echo "  • Android 7.0+ (API 24 or higher)"
-        echo "  • ARM64/aarch64 device"
+        echo "  • ARM64/aarch64 device (32-bit ARM supported but not recommended)"
         echo "  • Termux from GitHub (not Play Store)"
         echo "  • 8GB+ free storage space"
         echo "  • 3GB+ RAM recommended"
@@ -244,23 +251,6 @@ main() {
     # Clear any stale locks
     rm -f "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" 2>/dev/null
     
-    # Update repositories
-    msg info "Updating package repositories..."
-    if ! pkg update -y; then
-        msg warn "Update failed, please select a mirror..."
-        termux-change-repo
-        # Wait for termux-change-repo to complete and clear locks
-        sleep 2
-        rm -f "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" 2>/dev/null
-        msg info "Retrying package update..."
-        if ! pkg update -y; then
-            msg error "Failed to update package lists after changing mirror"
-            show_troubleshooting
-            exit 1
-        fi
-    fi
-    msg ok "Package lists updated successfully"
-    
     # Setup storage
     if [[ ! -d ~/storage ]]; then
         echo ""
@@ -271,15 +261,25 @@ main() {
         msg ok "Storage access already configured"
     fi
     
-    # Upgrade packages
-    msg info "Upgrading existing packages..."
+    # Upgrade packages (this also updates package lists)
+    msg info "Updating and upgrading packages..."
     if ! pkg upgrade -y -o Dpkg::Options::="--force-confold"; then
-        msg warn "Package upgrade encountered issues, continuing..."
+        msg warn "Upgrade failed, please select a mirror..."
+        termux-change-repo
+        sleep 2
+        rm -f "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" 2>/dev/null
+        msg info "Retrying package upgrade..."
+        if ! pkg upgrade -y -o Dpkg::Options::="--force-confold"; then
+            msg error "Failed to upgrade packages after changing mirror"
+            show_troubleshooting
+            exit 1
+        fi
     fi
+    msg ok "Packages updated successfully"
     
-    # Install core dependencies (including util-linux for script command)
+    # Install core dependencies
     msg info "Installing core dependencies..."
-    for pkg_name in proot-distro x11-repo tur-repo pulseaudio git util-linux termux-api
+    for pkg_name in proot-distro x11-repo tur-repo pulseaudio util-linux git
     do
         if pkg list-installed 2>/dev/null | grep -q "^$pkg_name/"; then
             msg ok "$pkg_name already installed, skipping..."
@@ -296,7 +296,7 @@ main() {
     
     # Install native Termux XFCE
     msg info "Installing native Termux XFCE desktop..."
-    for pkg_name in xfce4 xfce4-goodies xfce4-pulseaudio-plugin termux-x11-nightly \
+    for pkg_name in xfce4 xfce4-goodies termux-x11-nightly \
         virglrenderer-android firefox starship \
         fastfetch papirus-icon-theme eza bat htop
     do
@@ -449,7 +449,7 @@ EOF
     # Setup eza repository first (required for eza installation)
     if ! proot-distro login debian --shared-tmp -- dpkg -l eza 2>/dev/null | grep -q "^ii"; then
         proot-distro login debian --shared-tmp -- bash -c "
-            apt install -y gpg curl
+            apt install -y curl
             mkdir -p /etc/apt/keyrings
             curl -fsSL https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
             echo 'deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main' | tee /etc/apt/sources.list.d/gierens.list
@@ -484,26 +484,6 @@ EOF
     curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/xrun -o "$PREFIX/bin/xrun"
     chmod +x "$PREFIX/bin/xrun"
     
-    # Install app-installer
-    msg info "Installing app-installer utility..."
-    if [[ -d "$HOME/.config/App-Installer" ]]; then
-        msg ok "App-Installer already installed, skipping..."
-    else
-        git clone -q https://github.com/phoenixbyrd/App-Installer.git "$HOME/.config/App-Installer" || msg warn "Failed to clone App-Installer (may already exist)"
-    fi
-    chmod +x "$HOME/.config/App-Installer"/* 2>/dev/null || true
-    
-    cat > "$PREFIX/share/applications/app-installer.desktop" <<EOF
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=App Installer
-Exec=$HOME/.config/App-Installer/app-installer
-Icon=package-install
-Categories=System;
-Terminal=false
-EOF
-    
     # Completion message
     echo ""
     echo "┌────────────────────────────────────┐"
@@ -528,18 +508,12 @@ EOF
         set +e  # Disable errexit for log viewing
         echo -n "View log file? (y/N): " > /dev/tty
         read -r response < /dev/tty
-        echo "DEBUG: response='$response'" > /dev/tty
         if [[ "$response" =~ ^[Yy]$ ]]; then
-            echo "DEBUG: Inside if block for log viewing" > /dev/tty
             sed -i "1i=== Press 'q' to close this log viewer ===\n" "$LOG_FILE" 2>/dev/null
             echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE" 2>/dev/null
-            echo "DEBUG: About to call less..." > /dev/tty
             less "$LOG_FILE" || true
-        else
-            echo "DEBUG: Skipped log viewing (response didn't match)" > /dev/tty
         fi
         
-        echo "DEBUG: After log viewer block" > /dev/tty
         echo "" > /dev/tty
         echo -n "Full output: [v] View  [s] Save & view  [Enter] Skip: " > /dev/tty
         read -r full_response < /dev/tty

@@ -17,7 +17,7 @@ A lightweight script to set up native XFCE desktop environment and Debian proot 
 ## Requirements
 
 - **Operating System**: Android (any version)
-- **Architecture**: ARM64/aarch64 (32-bit armeabi is not supported - too slow for full desktop experience)
+- **Architecture**: ARM64/aarch64 recommended (32-bit ARM supported but not recommended due to performance limitations)
 - **Termux**: Must be from [GitHub](https://github.com/termux/termux-app/releases) or F-Droid (NOT Play Store)
 - **Termux-X11**: Required from [GitHub releases](https://github.com/termux/termux-x11/releases)
 - **Storage**: 8GB+ free space recommended
@@ -125,7 +125,6 @@ This starts a full Debian XFCE desktop session within the proot environment. A t
 
 ### System Tools
 - `xrun kill_termux_x11` - Stop all Termux-X11 sessions
-- `app-installer` - GUI tool for installing apps beyond standard repositories
 - `~/xfce_gpu.log` - View GPU acceleration status logs for both environments
 
 ## 🙏 Credits & Acknowledgments
