@@ -535,7 +535,8 @@ EOF
             echo "" >> "$LOG_FILE" 2>/dev/null
             echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE" 2>/dev/null
             less "$LOG_FILE"
-            if termux-clipboard-set < "$LOG_FILE" 2>/dev/null; then
+            # Stream file to clipboard without loading into memory
+            if cat "$LOG_FILE" | termux-clipboard-set 2>/dev/null; then
                 echo "Log file copied to clipboard" > /dev/tty
             fi
         fi
@@ -546,28 +547,40 @@ EOF
         case "$full_response" in
             [Vv])
                 less "$FULL_OUTPUT_FILE"
-                if termux-clipboard-set < "$FULL_OUTPUT_FILE" 2>/dev/null; then
+                # Stream file to clipboard without loading into memory
+                if cat "$FULL_OUTPUT_FILE" | termux-clipboard-set 2>/dev/null; then
                     echo "Full output copied to clipboard" > /dev/tty
                 fi
-                [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]] && rm -f "$FULL_OUTPUT_FILE"
+                # Only delete if it's the temp file (not the main log)
+                if [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]]; then
+                    rm -f "$FULL_OUTPUT_FILE"
+                fi
                 ;;
             [Ss])
                 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
                 SAVED_FILE="$HOME/xfce_install_full_${TIMESTAMP}.txt"
                 cp "$FULL_OUTPUT_FILE" "$SAVED_FILE"
+                # Keep only the 5 most recent saved files
                 ls -t "$HOME"/xfce_install_full_*.txt 2>/dev/null | tail -n +6 | xargs -r rm -f 2>/dev/null
                 sed -i "1i=== Press 'q' to close this log viewer ===" "$SAVED_FILE" 2>/dev/null
                 echo "" >> "$SAVED_FILE" 2>/dev/null
                 echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null
                 echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt" > /dev/tty
                 less "$SAVED_FILE"
-                if termux-clipboard-set < "$SAVED_FILE" 2>/dev/null; then
+                # Stream file to clipboard without loading into memory
+                if cat "$SAVED_FILE" | termux-clipboard-set 2>/dev/null; then
                     echo "Full output copied to clipboard" > /dev/tty
                 fi
-                [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]] && rm -f "$FULL_OUTPUT_FILE"
+                # Only delete if it's the temp file (not the main log)
+                if [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]]; then
+                    rm -f "$FULL_OUTPUT_FILE"
+                fi
                 ;;
             *)
-                [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]] && rm -f "$FULL_OUTPUT_FILE"
+                # Only delete if it's the temp file (not the main log)
+                if [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]]; then
+                    rm -f "$FULL_OUTPUT_FILE"
+                fi
                 ;;
         esac
         set -e  # Re-enable errexit
@@ -579,6 +592,8 @@ EOF
 
 # Check if script command is available and wrap execution
 if command -v script &>/dev/null && [[ "${1:-}" != "--no-script" ]]; then
+    # Set and export FULL_OUTPUT_FILE so it's available in the sub-shell
+    export FULL_OUTPUT_FILE="${FULL_OUTPUT_FILE:-$HOME/.xfce_install_full_temp.txt}"
     script -q -c "bash '${BASH_SOURCE[0]}' --no-script" "$FULL_OUTPUT_FILE"
 else
     main "${@:-}"
