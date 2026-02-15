@@ -59,8 +59,7 @@ cleanup() {
     local exit_code=$?
     if [ $exit_code -ne 0 ] && [ $exit_code -ne 130 ]; then
         # Add quit instruction at top and bottom
-        sed -i "1i=== Press 'q' to close this log viewer ===" "$LOG_FILE"
-        echo "" >> "$LOG_FILE"
+        sed -i "1i=== Press 'q' to close this log viewer ===\n" "$LOG_FILE"
         echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE"
         msg error "Installation failed."
         echo ""
@@ -86,8 +85,7 @@ cleanup() {
                     SAVED_FILE="$HOME/xfce_install_full_${TIMESTAMP}.txt"
                     cp "$FULL_OUTPUT_FILE" "$SAVED_FILE" || true
                     ls -t "$HOME"/xfce_install_full_*.txt 2>/dev/null | tail -n +6 | xargs -r rm -f 2>/dev/null || true
-                    sed -i "1i=== Press 'q' to close this log viewer ===" "$SAVED_FILE" 2>/dev/null || true
-                    echo "" >> "$SAVED_FILE" 2>/dev/null || true
+                    sed -i "1i=== Press 'q' to close this log viewer ===\n" "$SAVED_FILE" 2>/dev/null || true
                     echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null || true
                     echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt"
                     less "$SAVED_FILE" || true
@@ -531,8 +529,7 @@ EOF
         echo -n "View log file? (y/N): " > /dev/tty
         read -r response < /dev/tty
         if [[ "$response" =~ ^[Yy]$ ]]; then
-            sed -i "1i=== Press 'q' to close this log viewer ===" "$LOG_FILE" 2>/dev/null
-            echo "" >> "$LOG_FILE" 2>/dev/null
+            sed -i "1i=== Press 'q' to close this log viewer ===\n" "$LOG_FILE" 2>/dev/null
             echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE" 2>/dev/null
             less "$LOG_FILE" || true
         fi
@@ -543,10 +540,7 @@ EOF
         case "$full_response" in
             [Vv])
                 less "$FULL_OUTPUT_FILE" || true
-                # Only delete if it's the temp file (not the main log)
-                if [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]]; then
-                    rm -f "$FULL_OUTPUT_FILE"
-                fi
+                rm -f "$FULL_OUTPUT_FILE"
                 ;;
             [Ss])
                 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -554,21 +548,14 @@ EOF
                 cp "$FULL_OUTPUT_FILE" "$SAVED_FILE"
                 # Keep only the 5 most recent saved files
                 ls -t "$HOME"/xfce_install_full_*.txt 2>/dev/null | tail -n +6 | xargs -r rm -f 2>/dev/null
-                sed -i "1i=== Press 'q' to close this log viewer ===" "$SAVED_FILE" 2>/dev/null
-                echo "" >> "$SAVED_FILE" 2>/dev/null
+                sed -i "1i=== Press 'q' to close this log viewer ===\n" "$SAVED_FILE" 2>/dev/null
                 echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null
                 echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt" > /dev/tty
                 less "$SAVED_FILE" || true
-                # Only delete if it's the temp file (not the main log)
-                if [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]]; then
-                    rm -f "$FULL_OUTPUT_FILE"
-                fi
+                rm -f "$FULL_OUTPUT_FILE"
                 ;;
             *)
-                # Only delete if it's the temp file (not the main log)
-                if [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]]; then
-                    rm -f "$FULL_OUTPUT_FILE"
-                fi
+                rm -f "$FULL_OUTPUT_FILE"
                 ;;
         esac
         set -e  # Re-enable errexit
