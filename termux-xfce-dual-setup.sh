@@ -535,20 +535,6 @@ EOF
             echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE" 2>/dev/null
             echo "DEBUG: About to call less..." > /dev/tty
             less "$LOG_FILE" || true
-            echo "DEBUG: Attempting clipboard copy..." > /dev/tty
-            if command -v termux-clipboard-set &>/dev/null; then
-                echo "DEBUG: termux-clipboard-set command found" > /dev/tty
-                CLIP_OUTPUT=$(cat "$LOG_FILE" | termux-clipboard-set 2>&1)
-                CLIP_EXIT=$?
-                echo "DEBUG: Clipboard exit code: $CLIP_EXIT" > /dev/tty
-                if [ $CLIP_EXIT -eq 0 ]; then
-                    echo "Log copied to clipboard" > /dev/tty
-                else
-                    echo "DEBUG: Clipboard copy failed with output: $CLIP_OUTPUT" > /dev/tty
-                fi
-            else
-                echo "DEBUG: termux-clipboard-set not found (install termux-api package)" > /dev/tty
-            fi
         else
             echo "DEBUG: Skipped log viewing (response didn't match)" > /dev/tty
         fi
