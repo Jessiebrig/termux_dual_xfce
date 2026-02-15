@@ -534,7 +534,7 @@ EOF
             sed -i "1i=== Press 'q' to close this log viewer ===" "$LOG_FILE" 2>/dev/null
             echo "" >> "$LOG_FILE" 2>/dev/null
             echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE" 2>/dev/null
-            less "$LOG_FILE"
+            less "$LOG_FILE" || true
         fi
         
         echo "" > /dev/tty
@@ -542,7 +542,7 @@ EOF
         read -r full_response < /dev/tty
         case "$full_response" in
             [Vv])
-                less "$FULL_OUTPUT_FILE"
+                less "$FULL_OUTPUT_FILE" || true
                 # Only delete if it's the temp file (not the main log)
                 if [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]]; then
                     rm -f "$FULL_OUTPUT_FILE"
@@ -558,7 +558,7 @@ EOF
                 echo "" >> "$SAVED_FILE" 2>/dev/null
                 echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null
                 echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt" > /dev/tty
-                less "$SAVED_FILE"
+                less "$SAVED_FILE" || true
                 # Only delete if it's the temp file (not the main log)
                 if [[ "$FULL_OUTPUT_FILE" != "$LOG_FILE" ]]; then
                     rm -f "$FULL_OUTPUT_FILE"
