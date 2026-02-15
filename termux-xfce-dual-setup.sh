@@ -117,10 +117,10 @@ verify_system() {
     # Check RAM
     if command -v free &> /dev/null; then
         local total_ram=$(free -m | awk 'NR==2 {print $2}')
-        if [[ $total_ram -gt 4096 ]]; then
+        if [[ $total_ram -gt 3072 ]]; then
             msg ok "System RAM: ${total_ram}MB (sufficient)"
         else
-            msg warn "System RAM: ${total_ram}MB (4GB+ recommended)"
+            msg warn "System RAM: ${total_ram}MB (3GB+ recommended)"
             ((warnings++))
         fi
     fi
@@ -134,7 +134,7 @@ verify_system() {
         echo "  • ARM64/aarch64 device"
         echo "  • Termux from GitHub (not Play Store)"
         echo "  • 8GB+ free storage space"
-        echo "  • 4GB+ RAM recommended"
+        echo "  • 3GB+ RAM recommended"
         echo ""
         exit 1
     fi
@@ -408,7 +408,7 @@ EOF
 #!/bin/bash
 kill -9 $(pgrep -f "termux.x11") 2>/dev/null
 
-# Setup audio
+# Setup audio (experimental: Samsung-specific fix, may work for other devices)
 if [[ "$(getprop ro.product.manufacturer | tr '[:upper:]' '[:lower:]')" == "samsung" ]]; then
     LD_PRELOAD=/system/lib64/libskcodec.so pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
 else
@@ -447,7 +447,7 @@ STARTEOF
 if ! pgrep -f "termux-x11" > /dev/null; then
     kill -9 $(pgrep -f "termux.x11") 2>/dev/null
     
-    # Setup audio
+    # Setup audio (experimental: Samsung-specific fix, may work for other devices)
     if [[ "$(getprop ro.product.manufacturer | tr '[:upper:]' '[:lower:]')" == "samsung" ]]; then
         LD_PRELOAD=/system/lib64/libskcodec.so pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
     else
