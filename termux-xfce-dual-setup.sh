@@ -538,10 +538,13 @@ EOF
             echo "DEBUG: Attempting clipboard copy..." > /dev/tty
             if command -v termux-clipboard-set &>/dev/null; then
                 echo "DEBUG: termux-clipboard-set command found" > /dev/tty
-                if cat "$LOG_FILE" | termux-clipboard-set 2>&1; then
+                CLIP_OUTPUT=$(cat "$LOG_FILE" | termux-clipboard-set 2>&1)
+                CLIP_EXIT=$?
+                echo "DEBUG: Clipboard exit code: $CLIP_EXIT" > /dev/tty
+                if [ $CLIP_EXIT -eq 0 ]; then
                     echo "Log copied to clipboard" > /dev/tty
                 else
-                    echo "DEBUG: Clipboard copy failed (exit code: $?)" > /dev/tty
+                    echo "DEBUG: Clipboard copy failed with output: $CLIP_OUTPUT" > /dev/tty
                 fi
             else
                 echo "DEBUG: termux-clipboard-set not found (install termux-api package)" > /dev/tty
