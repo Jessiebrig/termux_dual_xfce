@@ -542,8 +542,8 @@ EOF
 }
 
 # Check if script command is available and wrap execution
-if command -v script &>/dev/null && [[ "$1" != "--no-script" ]]; then
-    script -q -c "bash '$0' --no-script" "$FULL_OUTPUT_FILE"
+if command -v script &>/dev/null && [[ "${1:-}" != "--no-script" ]]; then
+    script -q -c "bash '${BASH_SOURCE[0]}' --no-script" "$FULL_OUTPUT_FILE"
 else
-    main "$@"
+    main "${@:-}"
 fi
