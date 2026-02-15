@@ -527,14 +527,17 @@ EOF
     
     # Prompt for full output on success
     if [[ -n "${FULL_OUTPUT_FILE:-}" && -f "$FULL_OUTPUT_FILE" ]]; then
+        set +e  # Disable errexit for log viewing
         echo -n "View log file? (y/N): " > /dev/tty
         read -r response < /dev/tty
         if [[ "$response" =~ ^[Yy]$ ]]; then
-            sed -i '1i=== Press '"'"'q'"'"' to close this log viewer ===' "$LOG_FILE" 2>/dev/null || true
-            echo "" >> "$LOG_FILE" 2>/dev/null || true
-            echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE" 2>/dev/null || true
-            less "$LOG_FILE" || true
-            termux-clipboard-set < "$LOG_FILE" 2>/dev/null && echo "Log file copied to clipboard" > /dev/tty || true
+            sed -i '1i=== Press '"'"'q'"'"' to close this log viewer ===' "$LOG_FILE" 2>/dev/null
+            echo "" >> "$LOG_FILE" 2>/dev/null
+            echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE" 2>/dev/null
+            less "$LOG_FILE"
+            if termux-clipboard-set < "$LOG_FILE" 2>/dev/null; then
+                echo "Log file copied to clipboard" > /dev/tty
+            fi
         fi
         
         echo "" > /dev/tty
@@ -542,27 +545,32 @@ EOF
         read -r full_response < /dev/tty
         case "$full_response" in
             [Vv])
-                less "$FULL_OUTPUT_FILE" || true
-                termux-clipboard-set < "$FULL_OUTPUT_FILE" 2>/dev/null && echo "Full output copied to clipboard" > /dev/tty || true
+                less "$FULL_OUTPUT_FILE"
+                if termux-clipboard-set < "$FULL_OUTPUT_FILE" 2>/dev/null; then
+                    echo "Full output copied to clipboard" > /dev/tty
+                fi
                 rm -f "$FULL_OUTPUT_FILE"
                 ;;
             [Ss])
                 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
                 SAVED_FILE="$HOME/xfce_install_full_${TIMESTAMP}.txt"
-                cp "$FULL_OUTPUT_FILE" "$SAVED_FILE" || true
-                ls -t "$HOME"/xfce_install_full_*.txt 2>/dev/null | tail -n +6 | xargs -r rm -f 2>/dev/null || true
-                sed -i '1i=== Press '"'"'q'"'"' to close this log viewer ===' "$SAVED_FILE" 2>/dev/null || true
-                echo "" >> "$SAVED_FILE" 2>/dev/null || true
-                echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null || true
+                cp "$FULL_OUTPUT_FILE" "$SAVED_FILE"
+                ls -t "$HOME"/xfce_install_full_*.txt 2>/dev/null | tail -n +6 | xargs -r rm -f 2>/dev/null
+                sed -i '1i=== Press '"'"'q'"'"' to close this log viewer ===' "$SAVED_FILE" 2>/dev/null
+                echo "" >> "$SAVED_FILE" 2>/dev/null
+                echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null
                 echo "Saved to ~/xfce_install_full_${TIMESTAMP}.txt" > /dev/tty
-                less "$SAVED_FILE" || true
-                termux-clipboard-set < "$SAVED_FILE" 2>/dev/null && echo "Full output copied to clipboard" > /dev/tty || true
+                less "$SAVED_FILE"
+                if termux-clipboard-set < "$SAVED_FILE" 2>/dev/null; then
+                    echo "Full output copied to clipboard" > /dev/tty
+                fi
                 rm -f "$FULL_OUTPUT_FILE"
                 ;;
             *)
                 rm -f "$FULL_OUTPUT_FILE"
                 ;;
         esac
+        set -e  # Re-enable errexit
     fi
     
     source "$PREFIX/etc/bash.bashrc" 2>/dev/null || true
