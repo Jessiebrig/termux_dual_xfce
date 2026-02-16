@@ -16,7 +16,7 @@
 -- Configuration settings: https://conky.cc/config_settings
 conky.config = {
     alignment = 'top_right',
-    background = true,
+    background = false,
     border_width = 1,
     cpu_avg_samples = 2,
     default_color = 'white',
@@ -43,9 +43,9 @@ conky.config = {
     own_window = true,
     own_window_class = 'Conky',
     own_window_type = 'desktop',
+    own_window_colour = 'black',
     own_window_transparent = false,
-    own_window_argb_visual = true,
-    own_window_argb_value = 220,
+    own_window_argb_visual = false,
     own_window_hints = 'undecorated,sticky,below,skip_taskbar,skip_pager',
     show_graph_range = false,
     show_graph_scale = false,
@@ -61,6 +61,9 @@ conky.text = [[
 ${color grey}Info:$color ${scroll 32 Conky $conky_version - $sysname $nodename $kernel $machine}
 $hr
 ${color grey}Uptime:$color $uptime
+${color grey}Device:$color ${exec getprop ro.product.brand 2>/dev/null || echo "Unknown"} ${exec getprop ro.product.model 2>/dev/null || echo "Unknown"}
+${color grey}Architecture:$color ${exec uname -m}
+${color grey}Android:$color ${exec getprop ro.build.version.release 2>/dev/null || echo "Unknown"} (API ${exec getprop ro.build.version.sdk 2>/dev/null || echo "?"})
 ${color grey}Frequency (in MHz):$color $freq
 ${color grey}Frequency (in GHz):$color $freq_g
 ${color grey}RAM Usage:$color $mem/$memmax - $memperc% ${membar 4}
