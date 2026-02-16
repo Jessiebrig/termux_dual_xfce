@@ -206,7 +206,7 @@ main() {
     
     # Display branch information
     if [[ -n "${INSTALLER_BRANCH:-}" ]]; then
-        msg info "Installing from branch: $INSTALLER_BRANCH"
+        msg info "Branch: $INSTALLER_BRANCH"
         echo ""
     fi
     
