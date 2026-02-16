@@ -373,7 +373,7 @@ EOF
     proot-distro login debian --shared-tmp -- apt upgrade -y
     
     msg info "Installing Debian packages..."
-    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 conky-std htop
+    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 htop
     do
         if proot-distro login debian --shared-tmp -- dpkg -l "$deb_pkg" 2>/dev/null | grep -q "^ii"; then
             msg ok "$deb_pkg already installed, skipping..."
@@ -385,6 +385,15 @@ EOF
             fi
         fi
     done
+    
+    # Install conky-std separately (requires explicit selection)
+    if proot-distro login debian --shared-tmp -- dpkg -l conky-std 2>/dev/null | grep -q "^ii"; then
+        msg ok "conky-std already installed, skipping..."
+    else
+        msg info "Installing Debian package: conky-std..."
+        proot-distro login debian --shared-tmp -- apt install -y conky-std || msg warn "Failed to install conky-std (non-critical)"
+    fi
+    
     msg ok "Debian packages installed successfully"
     
     # Create Debian user
