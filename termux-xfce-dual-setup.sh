@@ -369,8 +369,7 @@ main() {
     msg info "Installing native Termux XFCE desktop..."
     for pkg_name in xfce4 xfce4-goodies termux-x11-nightly \
         virglrenderer-android mesa-zink virglrenderer-mesa-zink \
-        vulkan-loader-android firefox starship \
-        fastfetch papirus-icon-theme eza bat htop conky-std
+        firefox starship fastfetch papirus-icon-theme eza bat htop conky-std
     do
         if ! install_pkg "$pkg_name"; then
             msg error "Failed to install $pkg_name"
@@ -379,9 +378,19 @@ main() {
         fi
     done
     
-    # Try to install optional Vulkan driver (may not be available on all devices)
-    msg info "Installing experimental GPU drivers..."
-    pkg install -y mesa-vulkan-icd-freedreno-dri3 2>/dev/null || msg warn "Vulkan driver not available for this device (optional)"
+    # Try to install optional Vulkan packages (check compatibility first)
+    msg info "Checking Vulkan driver compatibility..."
+    if pkg install -y --dry-run vulkan-loader-android 2>/dev/null | grep -q "0 newly installed"; then
+        msg warn "vulkan-loader-android not compatible with this device"
+    else
+        pkg install -y vulkan-loader-android 2>/dev/null && msg ok "vulkan-loader-android installed" || msg warn "vulkan-loader-android installation failed"
+    fi
+    
+    if pkg install -y --dry-run mesa-vulkan-icd-freedreno-dri3 2>&1 | grep -q "unmet dependencies\|not going to be installed"; then
+        msg warn "mesa-vulkan-icd-freedreno-dri3 not compatible with this device"
+    else
+        pkg install -y mesa-vulkan-icd-freedreno-dri3 2>/dev/null && msg ok "mesa-vulkan-icd-freedreno-dri3 installed" || msg warn "mesa-vulkan-icd-freedreno-dri3 installation failed"
+    fi
     
     msg ok "XFCE desktop environment installed successfully"
     
