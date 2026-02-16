@@ -48,6 +48,8 @@ start_xfce() {
 
 # Function: Start Debian XFCE
 start_debian_xfce() {
+    local use_gpu="$1"
+    
     # Start Termux X11 if not already running
     if ! pgrep -f "termux-x11" > /dev/null; then
         kill -9 $(pgrep -f "termux.x11") 2>/dev/null
@@ -74,9 +76,11 @@ start_debian_xfce() {
     gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
     echo -e "${GREEN}[Debian XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log
     
-    # Prompt user for GPU acceleration
-    echo -n "Enable GPU acceleration? (y/n): " > /dev/tty
-    read use_gpu < /dev/tty
+    # Prompt if not provided
+    if [[ -z "$use_gpu" ]]; then
+        echo -n "Enable GPU acceleration? (y/n): "
+        read use_gpu
+    fi
     
     username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
     
@@ -164,7 +168,9 @@ show_menu() {
             2)
                 echo ""
                 echo -e "${GREEN}Starting Debian XFCE...${NC}"
-                start_debian_xfce
+                echo -n "Enable GPU acceleration? (y/n): "
+                read gpu_choice
+                start_debian_xfce "$gpu_choice"
                 exit 0
                 ;;
             3)
