@@ -120,6 +120,9 @@ fi
 
 echo ""
 
+# Restore terminal state
+exec < /dev/tty
+
 # Prompt user to run setup or xrun
 echo "[DEBUG] About to show tip"
 echo "Tip: Setup script skips already installed packages but will run from the start."
@@ -127,8 +130,7 @@ echo "[DEBUG] About to show prompt"
 echo -n "Run setup? (Y/n): "
 echo "[DEBUG] About to read response"
 
-# Restore terminal state
-exec < /dev/tty
+
 
 read -r response
 echo "[DEBUG] Got response: $response"
