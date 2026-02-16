@@ -122,15 +122,15 @@ echo ""
 
 # Prompt user to run setup or xrun
 echo "Tip: Setup script skips already installed packages but will run from the start."
-echo -n "Run setup? (Y/n): " > /dev/tty
+echo -n "Run setup? (y/N): " > /dev/tty
 read -r response < /dev/tty
 echo "[DEBUG] User input: '$response'" > /dev/tty
 
-if [[ "$response" =~ ^[Nn]$ ]]; then
-    echo "Setup skipped. Running xrun..."
-    xrun
-else
+if [[ "$response" =~ ^[Yy]$ ]]; then
     exec < /dev/tty
     export INSTALLER_BRANCH="$SELECTED_BRANCH"
     bash "$SCRIPT_NAME"
+else
+    echo "Setup skipped. Running xrun..."
+    xrun
 fi
