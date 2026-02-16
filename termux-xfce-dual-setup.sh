@@ -320,15 +320,15 @@ main() {
     msg info "Creating directory structure..."
     mkdir -p "$HOME"/{Desktop,Downloads,.config/xfce4/xfconf/xfce-perchannel-xml,.config/autostart}
     
-    # Auto-start terminal with fastfetch on Termux XFCE startup
+    # Auto-start terminal on Termux XFCE startup
     cat > "$HOME/.config/autostart/terminal-fastfetch.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Exec=xfce4-terminal -e "bash -c 'fastfetch; exec bash'"
+Exec=xfce4-terminal
 Hidden=false
 NoDisplay=false
 X-GNOME-Autostart-enabled=true
-Name=Terminal with Fastfetch
+Name=Terminal
 EOF
     
     # Initialize XFCE settings to prevent first-run errors
@@ -343,7 +343,7 @@ EOF
         cat >> "$PREFIX/etc/bash.bashrc" <<EOF
 
 # XFCE Setup Aliases
-alias start_debian='xrun start_debian'
+alias start_debian='xrun debian'
 alias ls='eza -lF --icons'
 alias cat='bat'
 eval "\$(starship init bash)"
@@ -401,16 +401,16 @@ EOF
         msg ok "Sudo already configured for $username, skipping..."
     fi
     
-    # Auto-start terminal with fastfetch on Debian XFCE startup
+    # Auto-start terminal on Debian XFCE startup
     mkdir -p "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config/autostart"
     cat > "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config/autostart/terminal-fastfetch.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Exec=xfce4-terminal -e "bash -c 'fastfetch; exec bash'"
+Exec=xfce4-terminal
 Hidden=false
 NoDisplay=false
 X-GNOME-Autostart-enabled=true
-Name=Terminal with Fastfetch
+Name=Terminal
 EOF
     chown -R $(stat -c '%u:%g' "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username") "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config" 2>&1 | tee -a "$LOG_FILE" || msg warn "chown failed (non-critical)"
     
@@ -522,9 +522,9 @@ EOF
     echo ""
     echo "Available commands:"
     echo -e "  ${C_OK}xrun${C_RESET} or ${C_OK}~/xrun${C_RESET}        - Quick access menu with numbered options"
-    echo -e "  ${C_OK}xrun start_xfce${C_RESET}         - Launch native Termux XFCE desktop"
-    echo -e "  ${C_OK}xrun start_debian_xfce${C_RESET}  - Launch Debian proot XFCE desktop"
-    echo -e "  ${C_OK}xrun start_debian${C_RESET}       - Enter Debian proot terminal"
+    echo -e "  ${C_OK}xrun xfce${C_RESET}              - Launch native Termux XFCE desktop"
+    echo -e "  ${C_OK}xrun debian_xfce${C_RESET}       - Launch Debian proot XFCE desktop"
+    echo -e "  ${C_OK}xrun debian${C_RESET}            - Enter Debian proot terminal"
     echo -e "  ${C_OK}xrun drun <command>${C_RESET}     - Run Debian commands from Termux"
     echo -e "  ${C_OK}xrun dgpu <command>${C_RESET}     - Run Debian apps with hardware acceleration"
     echo -e "  ${C_OK}xrun dfps <command>${C_RESET}     - Run Debian with hardware acceleration and FPS overlay"

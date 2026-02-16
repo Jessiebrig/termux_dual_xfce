@@ -1,22 +1,22 @@
 # Termux XFCE Desktop Setup
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)](https://github.com/Jessiebrig/termux_dual_xfce/releases/tag/v1.0.0)
+[![Version](https://img.shields.io/badge/version-v1.1.0-blue.svg)](https://github.com/Jessiebrig/termux_dual_xfce/releases/tag/v1.1.0)
 
 A lightweight script to set up native XFCE desktop environment and Debian proot with XFCE in Termux. Optimized for speed and efficiency with a streamlined installation process.
 
 ## Key Features
 - **Dual Desktop Environment**: Native Termux XFCE + Debian proot XFCE
-- **Fast Installation**: Streamlined setup process with essential packages only
-- **Hardware Acceleration**: GPU support with auto-detection (Adreno/Mali) and logging
-- **Modern CLI Tools**: Starship prompt, Fastfetch, eza, bat pre-installed
-- **System Monitor**: Conky integration for system stats
-- **Auto-launch Terminal**: Fastfetch displays automatically on desktop startup
+- **Hardware Acceleration**: GPU support with auto-detection (Adreno/Mali), Vulkan drivers, and real-time status logging
+- **Dynamic Branch Selection**: Choose stable or experimental versions for testing new features
+- **Fast Installation**: Streamlined setup with essential packages only
+- **Modern CLI Tools**: Starship prompt, Fastfetch (auto-displays on startup), eza, bat
+- **System Monitor**: Conky integration
 - **User-Friendly**: Simple username setup and automated configuration
 
 ## Requirements
 
-- **Operating System**: Android (any version)
+- **Operating System**: Android 7.0+ (Nougat or higher)
 - **Architecture**: ARM64/aarch64 recommended (32-bit ARM supported but not recommended due to performance limitations)
 - **Termux**: Must be from [GitHub](https://github.com/termux/termux-app/releases) or F-Droid (NOT Play Store)
 - **Termux-X11**: Required from [GitHub releases](https://github.com/termux/termux-x11/releases)
@@ -29,8 +29,8 @@ A lightweight script to set up native XFCE desktop environment and Debian proot 
 
 Download and install both apps on your Android device:
 
-1. **Termux** - [Download from GitHub](https://github.com/termux/termux-app/releases/latest) or [F-Droid](https://f-droid.org/packages/com.termux/) (select arm64-v8a for 64-bit or armeabi-v7a for 32-bit)
-2. **Termux-X11** - [Download from GitHub](https://github.com/termux/termux-x11/releases/latest) (select arm64-v8a for 64-bit or armeabi-v7a for 32-bit)
+1. **Termux** - [Download from GitHub](https://github.com/termux/termux-app/releases/latest) or [F-Droid](https://f-droid.org/packages/com.termux/)
+2. **Termux-X11** - [Download from GitHub](https://github.com/termux/termux-x11/releases/latest)
 
 ⚠️ **Important**: Use Termux from GitHub or F-Droid for full functionality.
 
@@ -42,10 +42,7 @@ Once both Termux and Termux-X11 are installed, open Termux and copy-paste this c
 curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh | bash
 ```
 
-This script will:
-1. Fetch available branches from the repository
-2. Let you choose which branch to install from (main/stable or feature branches)
-3. Automatically download and run the setup script from your selected branch
+The launcher fetches available branches and lets you choose which version to install (stable or experimental).
 
 **Alternative**: Direct installation from main branch (stable):
 
@@ -66,45 +63,43 @@ Installation logs are saved to `~/xfce_install.log` for troubleshooting.
 ### Native Termux Environment
 - XFCE4 desktop with goodies and plugins
 - Firefox browser
-- Starship prompt, Fastfetch (auto-displays on startup), eza, bat, htop
+- Starship prompt, Fastfetch, eza, bat, htop
 - Papirus icon theme
-- Hardware acceleration (virglrenderer, optional Vulkan) with status logging
+- Hardware acceleration (virglrenderer, optional Vulkan)
 
 ### Debian Proot Environment
 - XFCE4 desktop with goodies
-- Conky system monitor (auto-starts with desktop)
-- Starship prompt, eza, bat, fastfetch (auto-displays on startup), htop
-- Hardware acceleration (mesa-vulkan-kgsl/Turnip) with status logging
+- Conky system monitor
+- Starship prompt, eza, bat, fastfetch, htop
+- Hardware acceleration (mesa-vulkan-kgsl/Turnip)
 - Sudo configured for passwordless access
 
 ## Starting the Desktop
 
 ### Quick Launch Menu
 
-For easy access to all commands, use the interactive menu:
-
 ```bash
 xrun
 ```
 
-This provides a numbered menu to quickly start desktops or run utilities.
+Interactive menu for all commands below.
 
 ### Native Termux XFCE
 
 Launch the native XFCE desktop environment:
 
 ```bash
-xrun start_xfce
+xrun xfce
 ```
 
-This command initiates a Termux-X11 session, starts the XFCE4 desktop, and opens the Termux-X11 app directly into the desktop. A terminal with Fastfetch system info will automatically appear on startup, along with GPU acceleration status logging.
+Initiates Termux-X11 session and starts XFCE4 desktop.
 
 ### Debian Proot CLI
 
 Access the Debian proot environment from terminal:
 
 ```bash
-xrun start_debian
+xrun debian
 ```
 
 Note: The display is pre-configured in the Debian proot environment, allowing you to launch GUI applications directly from the terminal.
@@ -114,10 +109,10 @@ Note: The display is pre-configured in the Debian proot environment, allowing yo
 Launch Debian XFCE desktop environment:
 
 ```bash
-xrun start_debian_xfce
+xrun debian_xfce
 ```
 
-This starts a full Debian XFCE desktop session within the proot environment. A terminal with Fastfetch system info will automatically appear on startup, along with GPU acceleration status logging.
+Starts full Debian XFCE desktop in proot environment.
 
 ## Available Commands
 
@@ -125,9 +120,9 @@ This starts a full Debian XFCE desktop session within the proot environment. A t
 - `xrun` - Quick access menu with numbered options for all commands below
 
 ### Desktop Launchers
-- `xrun start_xfce` - Launch native Termux XFCE desktop
-- `xrun start_debian_xfce` - Launch Debian proot XFCE desktop
-- `xrun start_debian` - Enter Debian proot terminal (display pre-configured for GUI apps)
+- `xrun xfce` - Launch native Termux XFCE desktop
+- `xrun debian_xfce` - Launch Debian proot XFCE desktop
+- `xrun debian` - Enter Debian proot terminal (display pre-configured for GUI apps)
 
 ### Proot Utilities
 - `xrun drun <command>` - Run Debian commands from Termux without entering proot shell
