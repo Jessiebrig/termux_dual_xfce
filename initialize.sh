@@ -70,8 +70,8 @@ SCRIPT_URL="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$SELECTED_B
 if curl -sL "$SCRIPT_URL" -o "$SCRIPT_NAME"; then
     echo "✓ Downloaded successfully"
     echo ""
-    echo "Press Enter to start installation..." > /dev/tty
-    read -r < /dev/tty
+    echo "Press Enter to start installation..."
+    read -r
     
     # Pass the selected branch to the setup script
     export INSTALLER_BRANCH="$SELECTED_BRANCH"
