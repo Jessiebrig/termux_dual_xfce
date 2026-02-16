@@ -378,8 +378,8 @@ main() {
         fi
     done
     
-    # Install conky-std separately (non-critical)
-    install_pkg conky-std || msg warn "Failed to install conky-std (non-critical)"
+    # Install conky separately (non-critical)
+    install_pkg conky || msg warn "Failed to install conky (non-critical)"
     
     # Try to install optional Vulkan packages (check compatibility first)
     msg info "Checking Vulkan driver compatibility..."
