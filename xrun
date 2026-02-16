@@ -11,8 +11,12 @@ start_xfce() {
     # GPU detection and prompt FIRST
     gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
     echo -e "${GREEN}[Termux XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log
-    echo -n "Enable GPU acceleration? (y/n): " > /dev/tty
-    read -r use_gpu < /dev/tty
+    echo "Select GPU acceleration mode:"
+    echo "  0) No acceleration (software rendering)"
+    echo "  1) VIRGL (OpenGL)"
+    echo "  2) ZINK (Vulkan)"
+    echo -n "Choice [0/1/2]: " > /dev/tty
+    read -r gpu_choice < /dev/tty
     
     kill -9 $(pgrep -f "termux.x11") 2>/dev/null
 
@@ -36,22 +40,24 @@ start_xfce() {
     am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
     sleep 1
     
-    if [[ "$use_gpu" =~ ^[Yy]$ ]]; then
-        if echo "$gpu_info" | grep -iq "adreno"; then
-            echo -e "${GREEN}[Termux XFCE]${NC} Hardware acceleration: Enabled (Adreno)" | tee -a ~/xfce_gpu.log
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
-            sleep 2
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe xfce4-session &
-        elif echo "$gpu_info" | grep -iq "mali"; then
-            echo -e "${GREEN}[Termux XFCE]${NC} Hardware acceleration: Enabled (Mali)" | tee -a ~/xfce_gpu.log
+    if [[ "$gpu_choice" == "1" ]]; then
+        # VIRGL (OpenGL)
+        echo -e "${GREEN}[Termux XFCE]${NC} Using VIRGL (OpenGL)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
             MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android --angle-gl &
-            sleep 2
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe xfce4-session &
         else
-            echo -e "${YELLOW}[Termux XFCE]${NC} No compatible GPU, using software rendering" | tee -a ~/xfce_gpu.log
-            dbus-launch --exit-with-session xfce4-session &
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
         fi
+        sleep 2
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "2" ]]; then
+        # ZINK (Vulkan)
+        echo -e "${GREEN}[Termux XFCE]${NC} Using ZINK (Vulkan)" | tee -a ~/xfce_gpu.log
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server --use-egl-surfaceless --use-gles &
+        sleep 2
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
     else
+        # Software rendering
         echo -e "${YELLOW}[Termux XFCE]${NC} Software rendering mode" | tee -a ~/xfce_gpu.log
         dbus-launch --exit-with-session xfce4-session &
     fi
@@ -66,8 +72,14 @@ start_debian_xfce() {
     # GPU detection and prompt FIRST
     gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
     echo -e "${GREEN}[Debian XFCE]${NC} GPU Detected: $gpu_info" | tee -a ~/xfce_gpu.log
-    echo -n "Enable GPU acceleration? (y/n): " > /dev/tty
-    read -r use_gpu < /dev/tty
+    
+    # Step 1: Choose Termux graphics server
+    echo "Step 1: Select Termux graphics server:"
+    echo "  0) No GPU acceleration"
+    echo "  1) ZINK server (Vulkan)"
+    echo "  2) VIRGL server (OpenGL)"
+    echo -n "Choice [0/1/2]: " > /dev/tty
+    read -r server_choice < /dev/tty
     
     username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
     
@@ -93,31 +105,64 @@ start_debian_xfce() {
         sleep 1
     fi
     
-    if [[ "$use_gpu" =~ ^[Yy]$ ]]; then
-        # Detect GPU type and choose appropriate driver
-        if echo "$gpu_info" | grep -iq "adreno"; then
-            # Check if it's Adreno 6XX or 7XX
-            adreno_version=$(echo "$gpu_info" | grep -oP 'Adreno.*?[67][0-9]{2}' | grep -oP '[67][0-9]{2}')
-            if [[ -n "$adreno_version" ]]; then
-                echo -e "${GREEN}[Debian XFCE]${NC} Using Turnip driver (Adreno $adreno_version)" | tee -a ~/xfce_gpu.log
-                proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
-            else
-                echo -e "${YELLOW}[Debian XFCE]${NC} Adreno GPU detected but not 6XX/7XX series" | tee -a ~/xfce_gpu.log
-                echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL driver" | tee -a ~/xfce_gpu.log
-                MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
-                sleep 2
-                proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
-            fi
-        elif echo "$gpu_info" | grep -iq "mali"; then
-            echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL driver (Mali GPU)" | tee -a ~/xfce_gpu.log
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android --angle-gl &
-            sleep 2
+    if [[ "$server_choice" == "1" ]]; then
+        # ZINK server
+        echo -e "${GREEN}[Debian XFCE]${NC} Starting ZINK server (Vulkan)" | tee -a ~/xfce_gpu.log
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server --use-egl-surfaceless --use-gles &
+        sleep 2
+        
+        # Step 2: Choose proot driver
+        echo ""
+        echo "Step 2: Select proot driver:"
+        echo "  1) ZINK (Vulkan via virpipe)"
+        echo "  2) VIRGL (OpenGL via virpipe)"
+        echo "  3) Turnip (Native Vulkan - Experimental)"
+        echo -n "Choice [1/2/3]: " > /dev/tty
+        read -r driver_choice < /dev/tty
+        
+        if [[ "$driver_choice" == "2" ]]; then
+            echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL driver" | tee -a ~/xfce_gpu.log
             proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
+        elif [[ "$driver_choice" == "3" ]]; then
+            echo -e "${YELLOW}[Debian XFCE]${NC} Using Turnip driver (Experimental)" | tee -a ~/xfce_gpu.log
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
         else
-            echo -e "${YELLOW}[Debian XFCE]${NC} No compatible GPU, using software rendering" | tee -a ~/xfce_gpu.log
-            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
+            echo -e "${GREEN}[Debian XFCE]${NC} Using ZINK driver" | tee -a ~/xfce_gpu.log
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
         fi
+        
+    elif [[ "$server_choice" == "2" ]]; then
+        # VIRGL server
+        echo -e "${GREEN}[Debian XFCE]${NC} Starting VIRGL server (OpenGL)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android --angle-gl &
+        else
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
+        fi
+        sleep 2
+        
+        # Step 2: Choose proot driver
+        echo ""
+        echo "Step 2: Select proot driver:"
+        echo "  1) ZINK (Vulkan via virpipe)"
+        echo "  2) VIRGL (OpenGL via virpipe)"
+        echo "  3) Turnip (Native Vulkan - Experimental)"
+        echo -n "Choice [1/2/3]: " > /dev/tty
+        read -r driver_choice < /dev/tty
+        
+        if [[ "$driver_choice" == "2" ]]; then
+            echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL driver" | tee -a ~/xfce_gpu.log
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
+        elif [[ "$driver_choice" == "3" ]]; then
+            echo -e "${YELLOW}[Debian XFCE]${NC} Using Turnip driver (Experimental)" | tee -a ~/xfce_gpu.log
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
+        else
+            echo -e "${GREEN}[Debian XFCE]${NC} Using ZINK driver" | tee -a ~/xfce_gpu.log
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
+        fi
+        
     else
+        # No GPU acceleration
         echo -e "${YELLOW}[Debian XFCE]${NC} Software rendering mode" | tee -a ~/xfce_gpu.log
         proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
     fi
