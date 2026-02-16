@@ -369,7 +369,7 @@ main() {
     msg info "Installing native Termux XFCE desktop..."
     for pkg_name in xfce4 xfce4-goodies termux-x11-nightly \
         virglrenderer-android mesa-zink virglrenderer-mesa-zink \
-        firefox starship fastfetch papirus-icon-theme eza bat htop conky-std
+        firefox starship fastfetch papirus-icon-theme eza bat htop
     do
         if ! install_pkg "$pkg_name"; then
             msg error "Failed to install $pkg_name"
@@ -377,6 +377,9 @@ main() {
             exit 1
         fi
     done
+    
+    # Install conky-std separately (non-critical)
+    install_pkg conky-std || msg warn "Failed to install conky-std (non-critical)"
     
     # Try to install optional Vulkan packages (check compatibility first)
     msg info "Checking Vulkan driver compatibility..."
