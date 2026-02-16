@@ -373,7 +373,7 @@ EOF
     proot-distro login debian --shared-tmp -- apt upgrade -y
     
     msg info "Installing Debian packages..."
-    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 conky htop
+    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 conky-std htop
     do
         if proot-distro login debian --shared-tmp -- dpkg -l "$deb_pkg" 2>/dev/null | grep -q "^ii"; then
             msg ok "$deb_pkg already installed, skipping..."
