@@ -537,37 +537,6 @@ EOF
     
     msg ok "Aesthetic packages installation complete"
     
-    # Download xrun utility
-    # Use branch passed from launcher, or detect from script path, or default to main
-    if [[ -n "${INSTALLER_BRANCH:-}" ]]; then
-        XRUN_BRANCH="$INSTALLER_BRANCH"
-    else
-        # Fallback: auto-detect from script path
-        if [[ "${BASH_SOURCE[0]}" == *"feature/"* ]] || [[ "$0" == *"feature/"* ]]; then
-            XRUN_BRANCH=$(echo "${BASH_SOURCE[0]}" | grep -oP 'feature/[^/]+' | head -1)
-        else
-            XRUN_BRANCH="main"
-        fi
-    fi
-    
-    msg info "Installing xrun utility from $XRUN_BRANCH of termux_dual_xfce..."
-    if curl -sL "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$XRUN_BRANCH/xrun" -o "$PREFIX/bin/xrun"; then
-        chmod +x "$PREFIX/bin/xrun"
-        cp "$PREFIX/bin/xrun" "$HOME/xrun" 2>/dev/null || true
-        chmod +x "$HOME/xrun" 2>/dev/null || true
-    else
-        msg error "Failed to download xrun utility from $XRUN_BRANCH"
-        exit 1
-    fi
-    
-    # Verify xrun is accessible
-    if command -v xrun &>/dev/null; then
-        msg ok "xrun utility installed successfully"
-    else
-        msg warn "xrun installed at $PREFIX/bin/xrun but not in PATH"
-        msg warn "You can run it with: $PREFIX/bin/xrun or ~/xrun"
-    fi
-    
     # Completion message
     echo ""
     echo "┌────────────────────────────────────┐"
@@ -586,7 +555,7 @@ EOF
     echo -e "  ${C_OK}xrun dfps <command>${C_RESET}     - Run Debian with hardware acceleration and FPS overlay"
     echo -e "  ${C_OK}xrun kill_termux_x11${C_RESET}    - Stop all Termux-X11 sessions"
     echo ""
-    echo "Tip: Run 'xrun' and select option 7 to update/reinstall"
+    echo "Tip: Run 'xrun' and select option 9 to update/reinstall"
     echo ""
     echo "Note: If 'xrun' is not found, use '~/xrun' or restart Termux"
     echo ""

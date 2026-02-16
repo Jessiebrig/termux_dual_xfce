@@ -79,32 +79,60 @@ echo ""
 echo "Selected: $SELECTED_BRANCH"
 echo ""
 
-# Download the setup script
-echo "Downloading setup script from $SELECTED_BRANCH..."
-SCRIPT_URL="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$SELECTED_BRANCH/$SCRIPT_NAME"
+# Generic download function
+download_file() {
+    local url="$1"
+    local dest="$2"
+    local name="$3"
+    
+    echo -n "Downloading $name... "
+    if curl -sL "$url" -o "$dest" 2>/dev/null; then
+        echo "✓"
+        return 0
+    else
+        echo "✗"
+        return 1
+    fi
+}
 
-if curl -sL "$SCRIPT_URL" -o "$SCRIPT_NAME"; then
-    echo "✓ Downloaded successfully"
-    echo ""
-    
-    # Verify the file exists and has content
-    if [[ ! -f "$SCRIPT_NAME" ]]; then
-        echo "✗ Error: Script file not found after download"
-        exit 1
-    fi
-    
-    if [[ ! -s "$SCRIPT_NAME" ]]; then
-        echo "✗ Error: Script file is empty"
-        exit 1
-    fi
-    
-    # Restore terminal state for the main script
-    exec < /dev/tty
-    
-    # Pass the selected branch to the setup script
+# Download files from selected branch
+echo "Downloading files from $SELECTED_BRANCH:"
+echo ""
+
+SCRIPT_URL="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$SELECTED_BRANCH/$SCRIPT_NAME"
+XRUN_URL="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$SELECTED_BRANCH/xrun"
+
+download_file "$SCRIPT_URL" "$SCRIPT_NAME" "Setup script" || { echo "Error: Failed to download setup script"; exit 1; }
+
+# Verify the script file exists and has content
+if [[ ! -f "$SCRIPT_NAME" ]] || [[ ! -s "$SCRIPT_NAME" ]]; then
+    echo "✗ Error: Script file not found or empty"
+    exit 1
+fi
+
+if download_file "$XRUN_URL" "$PREFIX/bin/xrun" "xrun utility"; then
+    chmod +x "$PREFIX/bin/xrun"
+    cp "$PREFIX/bin/xrun" "$HOME/xrun" 2>/dev/null && chmod +x "$HOME/xrun" || true
+else
+    echo "Error: Failed to download xrun utility"
+    exit 1
+fi
+
+echo ""
+
+# Restore terminal state
+exec < /dev/tty
+
+# Prompt user to run setup or xrun
+echo "Tip: Setup script skips already installed packages but will run from the start."
+echo -n "Run setup? (Y/n): "
+read -r response
+
+if [[ "$response" =~ ^[Nn]$ ]]; then
+    echo "Setup skipped. Running xrun..."
+    export INSTALLER_BRANCH="$SELECTED_BRANCH"
+    xrun
+else
     export INSTALLER_BRANCH="$SELECTED_BRANCH"
     bash "$SCRIPT_NAME"
-else
-    echo "✗ Failed to download setup script from $SELECTED_BRANCH"
-    exit 1
 fi
