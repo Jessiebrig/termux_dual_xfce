@@ -131,7 +131,7 @@ if [[ "$response" =~ ^[Nn]$ ]]; then
     export INSTALLER_BRANCH="$SELECTED_BRANCH"
     xrun
 else
-    export INSTALLER_BRANCH="$SELECTED_BRANCH"
     exec < /dev/tty
+    export INSTALLER_BRANCH="$SELECTED_BRANCH"
     bash "$SCRIPT_NAME"
 fi
