@@ -36,8 +36,8 @@ while IFS= read -r branch; do
 done <<< "$BRANCHES"
 
 # Get user choice
-echo ""
-echo -n "Select branch [1]: "
+echo "" > /dev/tty
+echo -n "Select branch [1]: " > /dev/tty
 read -r choice < /dev/tty
 choice=${choice:-1}
 
