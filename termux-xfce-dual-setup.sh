@@ -432,19 +432,22 @@ EOF
     cat > "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.conkyrc" <<'EOF'
 conky.config = {
     own_window = true,
-    own_window_type = 'normal',
+    own_window_type = 'desktop',
     own_window_transparent = true,
     own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
     alignment = 'top_right',
     gap_x = 10,
     gap_y = 40,
+    minimum_width = 280,
+    minimum_height = 200,
     update_interval = 2.0,
     use_xft = true,
-    font = 'DejaVu Sans Mono:size=12',
+    font = 'DejaVu Sans Mono:size=16',
     background = true,
+    double_buffer = true,
 }
 conky.text = [[
-${color grey}System Info:
+${font DejaVu Sans Mono:size=18:bold}${color grey}System Info${font}
 ${color}Hostname: $nodename
 ${color}Uptime: $uptime
 ${color}RAM: $mem/$memmax
