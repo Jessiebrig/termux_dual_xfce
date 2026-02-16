@@ -128,7 +128,6 @@ echo "[DEBUG] User input: '$response'" > /dev/tty
 
 if [[ "$response" =~ ^[Nn]$ ]]; then
     echo "Setup skipped. Running xrun..."
-    export INSTALLER_BRANCH="$SELECTED_BRANCH"
     xrun
 else
     exec < /dev/tty
