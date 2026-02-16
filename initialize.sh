@@ -85,6 +85,9 @@ if curl -sL "$SCRIPT_URL" -o "$SCRIPT_NAME"; then
     echo "Press Enter to start installation..." > /dev/tty
     read -r < /dev/tty
     
+    # Restore terminal state for the main script
+    exec < /dev/tty
+    
     echo "Starting installation script..."
     # Run the setup script directly
     bash "$SCRIPT_NAME"
