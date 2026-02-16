@@ -211,8 +211,8 @@ main() {
     echo "  • Debian proot with XFCE"
     echo "  • Hardware acceleration support"
     echo ""
-    echo "Press Enter to continue or Ctrl+C to cancel..." > /dev/tty
-    read -r < /dev/tty
+    echo "Press Enter to continue or Ctrl+C to cancel..."
+    read -r
     
     # Get username
     USERNAME_FILE="$HOME/.xfce_debian_username"
