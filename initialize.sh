@@ -120,6 +120,9 @@ fi
 
 echo ""
 
+# Restore terminal state
+exec < /dev/tty
+
 # Prompt user to run setup or xrun
 echo "Tip: Setup script skips already installed packages but will run from the start."
 echo -n "Run setup? (Y/n): " > /dev/tty
