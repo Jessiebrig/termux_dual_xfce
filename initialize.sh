@@ -86,8 +86,8 @@ if curl -sL "$SCRIPT_URL" -o "$SCRIPT_NAME"; then
     read -r < /dev/tty
     
     echo "Starting installation script..."
-    # Pass the selected branch to the setup script and skip script wrapper
-    INSTALLER_BRANCH="$SELECTED_BRANCH" bash "$SCRIPT_NAME" --no-script
+    # Run the setup script directly
+    bash "$SCRIPT_NAME"
 else
     echo "✗ Failed to download setup script from $SELECTED_BRANCH"
     exit 1
