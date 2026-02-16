@@ -33,10 +33,12 @@ declare -A branch_map
 # Sort branches: main first, then others alphabetically
 if echo "$BRANCHES" | grep -q '^main$'; then
     # Main exists, add it first
-    commit_msg=$(curl -s "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/main" | grep -m1 '"message":' | cut -d'"' -f4 | head -c 50)
-    [[ ${#commit_msg} -eq 50 ]] && commit_msg="${commit_msg}..."
+    commit_data=$(curl -s "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/main")
+    commit_msg=$(echo "$commit_data" | grep -m1 '"message":' | cut -d'"' -f4 | head -c 40)
+    commit_date=$(echo "$commit_data" | grep '"date":' | head -1 | cut -d'"' -f4 | cut -d'T' -f1)
+    [[ ${#commit_msg} -eq 40 ]] && commit_msg="${commit_msg}..."
     
-    echo "  $i) main - $commit_msg"
+    echo "  $i) main - $commit_msg ($commit_date)"
     branch_map[$i]="main"
     ((i++))
 fi
@@ -46,11 +48,13 @@ while IFS= read -r branch; do
     [[ -z "$branch" ]] && continue
     [[ "$branch" == "main" ]] && continue
     
-    # Fetch last commit message for this branch
-    commit_msg=$(curl -s "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/$branch" | grep -m1 '"message":' | cut -d'"' -f4 | head -c 50)
-    [[ ${#commit_msg} -eq 50 ]] && commit_msg="${commit_msg}..."
+    # Fetch last commit message and date for this branch
+    commit_data=$(curl -s "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/$branch")
+    commit_msg=$(echo "$commit_data" | grep -m1 '"message":' | cut -d'"' -f4 | head -c 40)
+    commit_date=$(echo "$commit_data" | grep '"date":' | head -1 | cut -d'"' -f4 | cut -d'T' -f1)
+    [[ ${#commit_msg} -eq 40 ]] && commit_msg="${commit_msg}..."
     
-    echo "  $i) $branch - $commit_msg"
+    echo "  $i) $branch - $commit_msg ($commit_date)"
     branch_map[$i]="$branch"
     ((i++))
 done <<< "$(echo "$BRANCHES" | grep -v '^main$' | sort)"
