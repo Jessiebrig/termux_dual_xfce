@@ -31,14 +31,21 @@ i=1
 declare -A branch_map
 
 # Sort branches: main first, then others alphabetically
-SORTED_BRANCHES=$(echo "$BRANCHES" | grep -E '^main$'; echo "$BRANCHES" | grep -vE '^main$' | sort)
+if echo "$BRANCHES" | grep -q '^main$'; then
+    # Main exists, add it first
+    echo "  $i) main"
+    branch_map[$i]="main"
+    ((i++))
+fi
 
+# Add other branches alphabetically
 while IFS= read -r branch; do
     [[ -z "$branch" ]] && continue
+    [[ "$branch" == "main" ]] && continue
     echo "  $i) $branch"
     branch_map[$i]="$branch"
     ((i++))
-done <<< "$SORTED_BRANCHES"
+done <<< "$(echo "$BRANCHES" | grep -v '^main$' | sort)"
 
 # Get user choice
 echo "" > /dev/tty
