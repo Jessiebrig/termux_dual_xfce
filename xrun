@@ -8,6 +8,12 @@ NC='\033[0m'
 
 # Function: Start native Termux XFCE
 start_xfce() {
+    # GPU detection and prompt FIRST
+    gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
+    echo -e "${GREEN}[Termux XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log
+    echo -n "Enable GPU acceleration? (y/n): " > /dev/tty
+    read -r use_gpu < /dev/tty
+    
     kill -9 $(pgrep -f "termux.x11") 2>/dev/null
 
     # Setup audio (experimental: Samsung-specific fix, may work for other devices)
@@ -29,14 +35,6 @@ start_xfce() {
 
     am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
     sleep 1
-
-    # GPU detection and logging
-    gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
-    echo -e "${GREEN}[Termux XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log
-    
-    # Prompt for GPU acceleration
-    echo -n "Enable GPU acceleration? (y/n): " > /dev/tty
-    read -r use_gpu < /dev/tty
     
     if [[ "$use_gpu" =~ ^[Yy]$ ]]; then
         if echo "$gpu_info" | grep -iq "adreno"; then
@@ -61,6 +59,14 @@ start_xfce() {
 
 # Function: Start Debian XFCE
 start_debian_xfce() {
+    # GPU detection and prompt FIRST
+    gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
+    echo -e "${GREEN}[Debian XFCE]${NC} GPU Detected: $gpu_info" | tee -a ~/xfce_gpu.log
+    echo -n "Enable GPU acceleration? (y/n): " > /dev/tty
+    read -r use_gpu < /dev/tty
+    
+    username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
+    
     # Start Termux X11 if not already running
     if ! pgrep -f "termux-x11" > /dev/null; then
         kill -9 $(pgrep -f "termux.x11") 2>/dev/null
@@ -82,16 +88,6 @@ start_debian_xfce() {
         am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
         sleep 1
     fi
-
-    # GPU detection and driver selection
-    gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
-    echo -e "${GREEN}[Debian XFCE]${NC} GPU Detected: $gpu_info" | tee -a ~/xfce_gpu.log
-    
-    username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
-    
-    # Prompt for GPU acceleration
-    echo -n "Enable GPU acceleration? (y/n): " > /dev/tty
-    read -r use_gpu < /dev/tty
     
     if [[ "$use_gpu" =~ ^[Yy]$ ]]; then
         # Detect GPU type and choose appropriate driver
