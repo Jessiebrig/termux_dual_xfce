@@ -16,7 +16,11 @@ start_xfce() {
     echo "  1) ZINK (Vulkan)"
     echo "  2) VIRGL (OpenGL)"
     echo "  3) Native Turnip (Experimental)"
-    echo -n "Choice [0/1/2/3]: " > /dev/tty
+    echo "  4) Native Turnip + Optimizations (Experimental)"
+    echo "  5) Native Turnip + Aggressive Opts (Experimental)"
+    echo "  6) Pure Vulkan Mode (Experimental)"
+    echo "  7) ZINK Alternative Threading (Experimental)"
+    echo -n "Choice [0/1/2/3/4/5/6/7]: " > /dev/tty
     read -r gpu_choice < /dev/tty
     
     kill -9 $(pgrep -f "termux.x11") 2>/dev/null
@@ -65,6 +69,22 @@ start_xfce() {
         # Native Turnip (Direct Vulkan)
         echo -e "${YELLOW}[Termux XFCE]${NC} Using Native Turnip (Experimental)" | tee -a ~/xfce_gpu.log
         dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "4" ]]; then
+        # Native Turnip with optimizations
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using Native Turnip + Optimizations (Experimental)" | tee -a ~/xfce_gpu.log
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "5" ]]; then
+        # Native Turnip with aggressive optimizations
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using Native Turnip + Aggressive Opts (Experimental)" | tee -a ~/xfce_gpu.log
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform,sysmem ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "6" ]]; then
+        # Pure Vulkan mode
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using Pure Vulkan Mode (Experimental)" | tee -a ~/xfce_gpu.log
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink VK_ICD_FILENAMES=/vendor/etc/vulkan/icd.d/qualcomm.adreno.json MESA_VK_WSI_PRESENT_MODE=immediate TU_DEBUG=noconform MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "7" ]]; then
+        # ZINK with alternative threading
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using ZINK Alternative Threading (Experimental)" | tee -a ~/xfce_gpu.log
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform,nolrz ZINK_DEBUG=nir GALLIUM_THREAD=0 MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
     else
         # Software rendering
         echo -e "${YELLOW}[Termux XFCE]${NC} Software rendering mode" | tee -a ~/xfce_gpu.log
