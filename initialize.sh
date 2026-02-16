@@ -122,6 +122,9 @@ fi
 
 echo ""
 
+# Restore terminal state
+exec < /dev/tty
+
 echo "[DEBUG] About to show tip message"
 
 # Prompt user to run setup or xrun
@@ -137,8 +140,6 @@ if [[ "$response" =~ ^[Nn]$ ]]; then
     export INSTALLER_BRANCH="$SELECTED_BRANCH"
     xrun
 else
-    # Restore terminal state
-    exec < /dev/tty
     echo "[DEBUG] User chose to run setup"
     export INSTALLER_BRANCH="$SELECTED_BRANCH"
     bash "$SCRIPT_NAME"
