@@ -51,10 +51,14 @@ start_debian_xfce() {
     local use_gpu="$1"
     
     # Prompt if not provided
+    echo "[DEBUG] use_gpu parameter: '$use_gpu'"
     if [[ -z "$use_gpu" ]]; then
+        echo "[DEBUG] Prompting user for GPU choice"
         echo -n "Enable GPU acceleration? (y/N): "
         read use_gpu
+        echo "[DEBUG] User input: '$use_gpu'"
         [[ -z "$use_gpu" ]] && use_gpu="n"
+        echo "[DEBUG] Final use_gpu value: '$use_gpu'"
     fi
     
     # Start Termux X11 if not already running
@@ -169,10 +173,7 @@ show_menu() {
             2)
                 echo ""
                 echo -e "${GREEN}Starting Debian XFCE...${NC}"
-                echo -n "Enable GPU acceleration? (y/N): " > /dev/tty
-                read gpu_choice < /dev/tty
-                [[ -z "$gpu_choice" ]] && gpu_choice="n"
-                start_debian_xfce "$gpu_choice"
+                start_debian_xfce
                 exit 0
                 ;;
             3)
