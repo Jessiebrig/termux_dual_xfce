@@ -435,6 +435,41 @@ EOF
         msg ok "Debian user environment already configured, skipping..."
     fi
     
+    # Create minimal conky config for Debian (avoids permission errors)
+    msg info "Configuring conky..."
+    cat > "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.conkyrc" <<'EOF'
+conky.config = {
+    alignment = 'top_right',
+    background = false,
+    border_width = 1,
+    default_color = 'white',
+    draw_borders = false,
+    draw_graph_borders = true,
+    use_xft = true,
+    font = 'DejaVu Sans Mono:size=10',
+    gap_x = 5,
+    gap_y = 60,
+    minimum_height = 5,
+    minimum_width = 5,
+    no_buffers = true,
+    out_to_console = false,
+    out_to_stderr = false,
+    own_window = true,
+    own_window_class = 'Conky',
+    own_window_type = 'desktop',
+    update_interval = 2.0,
+    uppercase = false,
+}
+
+conky.text = [[
+${time %H:%M:%S}
+${time %A, %B %d}
+$hr
+Uptime: $uptime
+]]
+EOF
+    chown $(stat -c '%u:%g' "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username") "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.conkyrc" 2>&1 | tee -a "$LOG_FILE" || true
+    
     # Setup hardware acceleration in Debian (Turnip driver for Adreno 6XX/7XX)
     if [[ ! -f "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
         msg info "Configuring hardware acceleration..."
