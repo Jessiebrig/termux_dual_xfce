@@ -428,6 +428,17 @@ X-GNOME-Autostart-enabled=true
 Name=Terminal
 EOF
     
+    # Auto-start conky on Debian XFCE startup
+    cat > "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config/autostart/conky.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Exec=conky
+Hidden=falsels
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=Conky
+EOF
+    
     # Download conky config from branch
     msg info "Installing conky configuration..."
     if [[ -n "${INSTALLER_BRANCH:-}" ]]; then
