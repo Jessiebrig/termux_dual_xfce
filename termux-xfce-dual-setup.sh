@@ -204,6 +204,12 @@ main() {
     echo "└────────────────────────────────────┘"
     echo ""
     
+    # Display branch information
+    if [[ -n "${INSTALLER_BRANCH:-}" ]]; then
+        msg info "Installing from branch: $INSTALLER_BRANCH"
+        echo ""
+    fi
+    
     verify_system
     
     msg info "This will install:"

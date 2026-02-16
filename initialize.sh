@@ -82,14 +82,11 @@ if curl -sL "$SCRIPT_URL" -o "$SCRIPT_NAME"; then
         exit 1
     fi
     
-    echo "Press Enter to start installation..." > /dev/tty
-    read -r < /dev/tty
-    
     # Restore terminal state for the main script
     exec < /dev/tty
     
-    echo "Starting installation script..."
-    # Run the setup script directly
+    # Pass the selected branch to the setup script
+    export INSTALLER_BRANCH="$SELECTED_BRANCH"
     bash "$SCRIPT_NAME"
 else
     echo "✗ Failed to download setup script from $SELECTED_BRANCH"
