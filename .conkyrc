@@ -64,8 +64,8 @@ ${color grey}Uptime:$color $uptime
 ${color grey}Device:$color ${exec getprop ro.product.brand 2>/dev/null || echo "Unknown"} ${exec getprop ro.product.model 2>/dev/null || echo "Unknown"}
 ${color grey}Architecture:$color ${exec uname -m}
 ${color grey}Android:$color ${exec getprop ro.build.version.release 2>/dev/null || echo "Unknown"} (API ${exec getprop ro.build.version.sdk 2>/dev/null || echo "?"})
-${color grey}Frequency (in MHz):$color $freq
-${color grey}Frequency (in GHz):$color $freq_g
+-- ${color grey}Frequency (in MHz):$color $freq
+-- ${color grey}Frequency (in GHz):$color $freq_g
 ${color grey}RAM Usage:$color $mem/$memmax - $memperc% ${membar 4}
 ${color grey}Swap Usage:$color $swap/$swapmax - $swapperc% ${swapbar 4}
 ${color grey}CPU Usage:$color $cpu% ${cpubar 4}
