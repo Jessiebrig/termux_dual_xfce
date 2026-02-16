@@ -48,19 +48,6 @@ start_xfce() {
 
 # Function: Start Debian XFCE
 start_debian_xfce() {
-    local use_gpu="$1"
-    
-    # Prompt if not provided
-    echo "[DEBUG] use_gpu parameter: '$use_gpu'"
-    if [[ -z "$use_gpu" ]]; then
-        echo "[DEBUG] Prompting user for GPU choice"
-        echo -n "Enable GPU acceleration? (y/N): "
-        read use_gpu
-        echo "[DEBUG] User input: '$use_gpu'"
-        [[ -z "$use_gpu" ]] && use_gpu="n"
-        echo "[DEBUG] Final use_gpu value: '$use_gpu'"
-    fi
-    
     # Start Termux X11 if not already running
     if ! pgrep -f "termux-x11" > /dev/null; then
         kill -9 $(pgrep -f "termux.x11") 2>/dev/null
@@ -83,17 +70,33 @@ start_debian_xfce() {
         sleep 1
     fi
 
-    # GPU detection and logging
+    # GPU detection and driver selection
     gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
-    echo -e "${GREEN}[Debian XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log
+    echo -e "${GREEN}[Debian XFCE]${NC} GPU Detected: $gpu_info" | tee -a ~/xfce_gpu.log
     
     username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
     
-    if [[ "$use_gpu" =~ ^[Yy]$ ]]; then
-        echo -e "${GREEN}[Debian XFCE]${NC} Hardware acceleration: Enabled" | tee -a ~/xfce_gpu.log
-        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
+    # Detect GPU type and choose appropriate driver
+    if echo "$gpu_info" | grep -iq "adreno"; then
+        # Check if it's Adreno 6XX or 7XX
+        adreno_version=$(echo "$gpu_info" | grep -oP 'Adreno.*?[67][0-9]{2}' | grep -oP '[67][0-9]{2}')
+        if [[ -n "$adreno_version" ]]; then
+            echo -e "${GREEN}[Debian XFCE]${NC} Using Turnip driver (Adreno $adreno_version)" | tee -a ~/xfce_gpu.log
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
+        else
+            echo -e "${YELLOW}[Debian XFCE]${NC} Adreno GPU detected but not 6XX/7XX series" | tee -a ~/xfce_gpu.log
+            echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL driver" | tee -a ~/xfce_gpu.log
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
+            sleep 2
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
+        fi
+    elif echo "$gpu_info" | grep -iq "mali"; then
+        echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL driver (Mali GPU)" | tee -a ~/xfce_gpu.log
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android --angle-gl &
+        sleep 2
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
     else
-        echo -e "${YELLOW}[Debian XFCE]${NC} Hardware acceleration: Disabled" | tee -a ~/xfce_gpu.log
+        echo -e "${YELLOW}[Debian XFCE]${NC} Unknown GPU, using software rendering" | tee -a ~/xfce_gpu.log
         proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
     fi
 }

@@ -97,6 +97,78 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Download conky config helper function
+download_conky_config() {
+    local target_path="$1"
+    local env_name="$2"
+    
+    msg info "Installing conky configuration for $env_name..."
+    if [[ -n "${INSTALLER_BRANCH:-}" ]]; then
+        CONKY_BRANCH="$INSTALLER_BRANCH"
+    else
+        if [[ "${BASH_SOURCE[0]}" == *"feature/"* ]] || [[ "$0" == *"feature/"* ]]; then
+            CONKY_BRANCH=$(echo "${BASH_SOURCE[0]}" | grep -oP 'feature/[^/]+' | head -1)
+        else
+            CONKY_BRANCH="main"
+        fi
+    fi
+    
+    if curl -sL "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$CONKY_BRANCH/.conkyrc" -o "$target_path"; then
+        msg ok "Conky configuration installed from $CONKY_BRANCH"
+    else
+        msg warn "Failed to download conky config, skipping..."
+    fi
+}
+
+# Install Termux package helper
+install_pkg() {
+    local pkg_name="$1"
+    if pkg list-installed 2>/dev/null | grep -q "^$pkg_name/"; then
+        msg ok "$pkg_name already installed, skipping..."
+        return 0
+    else
+        msg info "Installing $pkg_name..."
+        if pkg install -y "$pkg_name"; then
+            return 0
+        else
+            return 1
+        fi
+    fi
+}
+
+# Install Debian package helper
+install_deb_pkg() {
+    local pkg_name="$1"
+    if proot-distro login debian --shared-tmp -- dpkg -l "$pkg_name" 2>/dev/null | grep -q "^ii"; then
+        msg ok "$pkg_name already installed, skipping..."
+        return 0
+    else
+        msg info "Installing Debian package: $pkg_name..."
+        if proot-distro login debian --shared-tmp -- apt install -y "$pkg_name"; then
+            return 0
+        else
+            return 1
+        fi
+    fi
+}
+
+# Create autostart desktop file helper
+create_autostart() {
+    local dir="$1"
+    local name="$2"
+    local exec="$3"
+    mkdir -p "$dir"
+    cat > "$dir/${name}.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Exec=$exec
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=$name
+EOF
+}
+
 # System verification
 verify_system() {
     log "FUNCTION: verify_system() - Starting system verification"
@@ -285,15 +357,10 @@ main() {
     msg info "Installing core dependencies..."
     for pkg_name in proot-distro x11-repo tur-repo pulseaudio util-linux git
     do
-        if pkg list-installed 2>/dev/null | grep -q "^$pkg_name/"; then
-            msg ok "$pkg_name already installed, skipping..."
-        else
-            msg info "Installing $pkg_name..."
-            if ! pkg install -y "$pkg_name"; then
-                msg error "Failed to install $pkg_name"
-                show_troubleshooting
-                exit 1
-            fi
+        if ! install_pkg "$pkg_name"; then
+            msg error "Failed to install $pkg_name"
+            show_troubleshooting
+            exit 1
         fi
     done
     msg ok "Core dependencies installed successfully"
@@ -301,18 +368,14 @@ main() {
     # Install native Termux XFCE
     msg info "Installing native Termux XFCE desktop..."
     for pkg_name in xfce4 xfce4-goodies termux-x11-nightly \
-        virglrenderer-android firefox starship \
-        fastfetch papirus-icon-theme eza bat htop
+        virglrenderer-android mesa-zink virglrenderer-mesa-zink \
+        vulkan-loader-android firefox starship \
+        fastfetch papirus-icon-theme eza bat htop conky-std
     do
-        if pkg list-installed 2>/dev/null | grep -q "^$pkg_name/"; then
-            msg ok "$pkg_name already installed, skipping..."
-        else
-            msg info "Installing $pkg_name..."
-            if ! pkg install -y "$pkg_name"; then
-                msg error "Failed to install $pkg_name"
-                show_troubleshooting
-                exit 1
-            fi
+        if ! install_pkg "$pkg_name"; then
+            msg error "Failed to install $pkg_name"
+            show_troubleshooting
+            exit 1
         fi
     done
     
@@ -326,16 +389,12 @@ main() {
     msg info "Creating directory structure..."
     mkdir -p "$HOME"/{Desktop,Downloads,.config/xfce4/xfconf/xfce-perchannel-xml,.config/autostart}
     
-    # Auto-start terminal on Termux XFCE startup
-    cat > "$HOME/.config/autostart/terminal-fastfetch.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Exec=xfce4-terminal
-Hidden=false
-NoDisplay=false
-X-GNOME-Autostart-enabled=true
-Name=Terminal
-EOF
+    # Auto-start terminal and conky on Termux XFCE startup
+    create_autostart "$HOME/.config/autostart" "Terminal" "xfce4-terminal"
+    create_autostart "$HOME/.config/autostart" "Conky" "conky"
+    
+    # Download conky config for native Termux
+    download_conky_config "$HOME/.conkyrc" "native Termux"
     
     # Initialize XFCE settings to prevent first-run errors
     msg info "Initializing XFCE settings..."
@@ -359,8 +418,11 @@ EOF
         msg ok "Aliases already configured, skipping..."
     fi
     
+    # Debian root path variable
+    DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
+    
     # Install Debian proot
-    if [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
+    if [[ -d "$DEBIAN_ROOT" ]]; then
         msg ok "Debian proot already installed, skipping..."
     else
         msg info "Installing Debian proot environment..."
@@ -375,24 +437,14 @@ EOF
     msg info "Installing Debian packages..."
     for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 htop
     do
-        if proot-distro login debian --shared-tmp -- dpkg -l "$deb_pkg" 2>/dev/null | grep -q "^ii"; then
-            msg ok "$deb_pkg already installed, skipping..."
-        else
-            msg info "Installing Debian package: $deb_pkg..."
-            if ! proot-distro login debian --shared-tmp -- apt install -y "$deb_pkg"; then
-                msg error "Failed to install Debian package: $deb_pkg"
-                exit 1
-            fi
+        if ! install_deb_pkg "$deb_pkg"; then
+            msg error "Failed to install Debian package: $deb_pkg"
+            exit 1
         fi
     done
     
-    # Install conky-std separately (requires explicit selection)
-    if proot-distro login debian --shared-tmp -- dpkg -l conky-std 2>/dev/null | grep -q "^ii"; then
-        msg ok "conky-std already installed, skipping..."
-    else
-        msg info "Installing Debian package: conky-std..."
-        proot-distro login debian --shared-tmp -- apt install -y conky-std || msg warn "Failed to install conky-std (non-critical)"
-    fi
+    # Install conky-std separately (non-critical)
+    install_deb_pkg conky-std || msg warn "Failed to install conky-std (non-critical)"
     
     msg ok "Debian packages installed successfully"
     
@@ -407,62 +459,28 @@ EOF
     fi
     
     # Configure sudo
-    if ! grep -q "$username ALL=(ALL) NOPASSWD:ALL" "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/etc/sudoers" 2>/dev/null; then
+    if ! grep -q "$username ALL=(ALL) NOPASSWD:ALL" "$DEBIAN_ROOT/etc/sudoers" 2>/dev/null; then
         msg info "Configuring sudo for $username..."
-        chmod u+rw "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/etc/sudoers"
-        echo "$username ALL=(ALL) NOPASSWD:ALL" >> "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/etc/sudoers"
-        chmod u-w "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/etc/sudoers"
+        chmod u+rw "$DEBIAN_ROOT/etc/sudoers"
+        echo "$username ALL=(ALL) NOPASSWD:ALL" >> "$DEBIAN_ROOT/etc/sudoers"
+        chmod u-w "$DEBIAN_ROOT/etc/sudoers"
     else
         msg ok "Sudo already configured for $username, skipping..."
     fi
     
-    # Auto-start terminal on Debian XFCE startup
-    mkdir -p "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config/autostart"
-    cat > "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config/autostart/terminal-fastfetch.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Exec=xfce4-terminal
-Hidden=false
-NoDisplay=false
-X-GNOME-Autostart-enabled=true
-Name=Terminal
-EOF
+    # Auto-start terminal and conky on Debian XFCE startup
+    create_autostart "$DEBIAN_ROOT/home/$username/.config/autostart" "Terminal" "xfce4-terminal"
+    create_autostart "$DEBIAN_ROOT/home/$username/.config/autostart" "Conky" "conky"
     
-    # Auto-start conky on Debian XFCE startup
-    cat > "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config/autostart/conky.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Exec=conky
-Hidden=falsels
-NoDisplay=false
-X-GNOME-Autostart-enabled=true
-Name=Conky
-EOF
+    # Download conky config for Debian
+    download_conky_config "$DEBIAN_ROOT/home/$username/.conkyrc" "Debian"
     
-    # Download conky config from branch
-    msg info "Installing conky configuration..."
-    if [[ -n "${INSTALLER_BRANCH:-}" ]]; then
-        CONKY_BRANCH="$INSTALLER_BRANCH"
-    else
-        if [[ "${BASH_SOURCE[0]}" == *"feature/"* ]] || [[ "$0" == *"feature/"* ]]; then
-            CONKY_BRANCH=$(echo "${BASH_SOURCE[0]}" | grep -oP 'feature/[^/]+' | head -1)
-        else
-            CONKY_BRANCH="main"
-        fi
-    fi
-    
-    if curl -sL "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$CONKY_BRANCH/.conkyrc" -o "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.conkyrc"; then
-        msg ok "Conky configuration installed from $CONKY_BRANCH"
-    else
-        msg warn "Failed to download conky config, skipping..."
-    fi
-    
-    chown -R $(stat -c '%u:%g' "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username") "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config" 2>&1 | tee -a "$LOG_FILE" || msg warn "chown failed (non-critical)"
+    chown -R $(stat -c '%u:%g' "$DEBIAN_ROOT/home/$username") "$DEBIAN_ROOT/home/$username/.config" 2>&1 | tee -a "$LOG_FILE" || msg warn "chown failed (non-critical)"
     
     # Setup Debian environment
-    if ! grep -q "export DISPLAY=:0" "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.bashrc" 2>/dev/null; then
+    if ! grep -q "export DISPLAY=:0" "$DEBIAN_ROOT/home/$username/.bashrc" 2>/dev/null; then
         msg info "Configuring Debian user environment..."
-        cat >> "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.bashrc" <<EOF
+        cat >> "$DEBIAN_ROOT/home/$username/.bashrc" <<EOF
 
 export DISPLAY=:0
 alias ls='eza -lF --icons' 2>/dev/null || alias ls='ls --color=auto'
@@ -475,15 +493,16 @@ EOF
     fi
     
     # Setup hardware acceleration in Debian (Turnip driver for Adreno 6XX/7XX)
-    if [[ ! -f "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
-        msg info "Configuring hardware acceleration..."
+    if [[ ! -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
+        msg info "Installing Turnip GPU driver for Debian..."
         proot-distro login debian --shared-tmp -- bash -c "
-            curl -sLO https://github.com/MatrixhKa/mesa-turnip/releases/download/24.1.0/mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
+            curl -L 'https://drive.google.com/uc?export=download&id=1f4pLvjDFcBPhViXGIFoRE3Xc8HWoiqG-' -o mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
             apt install -y ./mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
             rm mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
         "
+        msg ok "Turnip GPU driver installed successfully"
     else
-        msg ok "Hardware acceleration already configured, skipping..."
+        msg ok "Turnip GPU driver already installed, skipping..."
     fi
     
     # Install aesthetic packages in Debian
@@ -504,12 +523,7 @@ EOF
     # Install aesthetic packages
     for aesthetic_pkg in eza bat fastfetch
     do
-        if proot-distro login debian --shared-tmp -- dpkg -l "$aesthetic_pkg" 2>/dev/null | grep -q "^ii"; then
-            msg ok "$aesthetic_pkg already installed, skipping..."
-        else
-            msg info "Installing $aesthetic_pkg..."
-            proot-distro login debian --shared-tmp -- apt install -y "$aesthetic_pkg" || msg warn "Failed to install $aesthetic_pkg (non-critical)"
-        fi
+        install_deb_pkg "$aesthetic_pkg" || msg warn "Failed to install $aesthetic_pkg (non-critical)"
     done
     
     # Install starship (uses different installation method)

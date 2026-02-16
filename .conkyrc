@@ -20,6 +20,7 @@ conky.text = [[
 ${font DejaVu Sans Mono:size=13:bold}${color grey}SYSTEM${font}
 ${color}${hr 1}
 ${color grey}Device:${color} ${exec getprop ro.product.brand 2>/dev/null || echo "Unknown"} ${exec getprop ro.product.model 2>/dev/null || echo "Unknown"}
+${color grey}Architecture:${color} ${exec uname -m}
 ${color grey}Uptime:${color} $uptime_short
 
 ${font DejaVu Sans Mono:size=13:bold}${color grey}CPU${font}
