@@ -111,22 +111,29 @@ if [[ ! -f "$SCRIPT_NAME" ]] || [[ ! -s "$SCRIPT_NAME" ]]; then
 fi
 
 if download_file "$XRUN_URL" "$PREFIX/bin/xrun" "xrun utility"; then
+    echo "[DEBUG] xrun downloaded, setting permissions"
     chmod +x "$PREFIX/bin/xrun"
     cp "$PREFIX/bin/xrun" "$HOME/xrun" 2>/dev/null && chmod +x "$HOME/xrun" || true
+    echo "[DEBUG] xrun permissions set"
 else
     echo "Error: Failed to download xrun utility"
     exit 1
 fi
 
 echo ""
+echo "[DEBUG] Downloads complete, preparing prompt"
 
 # Restore terminal state
 exec < /dev/tty
+
+echo "[DEBUG] About to show tip message"
 
 # Prompt user to run setup or xrun
 echo "Tip: Setup script skips already installed packages but will run from the start."
 echo -n "Run setup? (Y/n): "
 read -r response
+
+echo "[DEBUG] User response: $response"
 
 if [[ "$response" =~ ^[Nn]$ ]]; then
     echo "Setup skipped. Running xrun..."
