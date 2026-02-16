@@ -433,25 +433,42 @@ EOF
 conky.config = {
     own_window = true,
     own_window_type = 'desktop',
-    own_window_transparent = true,
+    own_window_transparent = false,
+    own_window_argb_visual = true,
+    own_window_argb_value = 180,
     own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
     alignment = 'top_right',
     gap_x = 10,
     gap_y = 40,
     minimum_width = 280,
-    minimum_height = 200,
+    minimum_height = 280,
     update_interval = 2.0,
     use_xft = true,
-    font = 'DejaVu Sans Mono:size=16',
+    font = 'DejaVu Sans Mono:size=13',
     background = true,
     double_buffer = true,
 }
 conky.text = [[
-${font DejaVu Sans Mono:size=18:bold}${color grey}System Info${font}
-${color}Hostname: $nodename
-${color}Uptime: $uptime
-${color}RAM: $mem/$memmax
-${color}CPU: ${cpu cpu0}%
+${font DejaVu Sans Mono:size=15:bold}${color grey}SYSTEM${font}
+${color}${hr 1}
+${color grey}Device:${color} ${exec getprop ro.product.brand 2>/dev/null || echo "Unknown"} ${exec getprop ro.product.model 2>/dev/null || echo "Unknown"}
+${color grey}Host:${color} $nodename
+${color grey}Uptime:${color} $uptime_short
+
+${font DejaVu Sans Mono:size=15:bold}${color grey}CPU${font}
+${color}${hr 1}
+${color grey}Usage:${color} ${cpu cpu0}%
+${cpubar 6}
+
+${font DejaVu Sans Mono:size=15:bold}${color grey}MEMORY${font}
+${color}${hr 1}
+${color grey}RAM:${color} $mem / $memmax
+${membar 6}
+
+${font DejaVu Sans Mono:size=15:bold}${color grey}STORAGE${font}
+${color}${hr 1}
+${color grey}Root:${color} ${fs_used /} / ${fs_size /}
+${fs_bar 6 /}
 ]]
 EOF
     
