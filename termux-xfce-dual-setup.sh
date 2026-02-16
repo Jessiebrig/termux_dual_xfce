@@ -398,9 +398,6 @@ main() {
     msg info "Creating directory structure..."
     mkdir -p "$HOME"/{Desktop,Downloads,.config/xfce4/xfconf/xfce-perchannel-xml,.config/autostart}
     
-    # Auto-start terminal on Termux XFCE startup
-    create_autostart "$HOME/.config/autostart" "Terminal" "xfce4-terminal"
-    
     # Initialize XFCE settings to prevent first-run errors
     msg info "Initializing XFCE settings..."
     export DISPLAY=:0
@@ -541,12 +538,9 @@ EOF
     msg ok "Aesthetic packages installation complete"
     
     # Download xrun utility
-    msg info "Installing xrun utility..."
-    
     # Use branch passed from launcher, or detect from script path, or default to main
     if [[ -n "${INSTALLER_BRANCH:-}" ]]; then
         XRUN_BRANCH="$INSTALLER_BRANCH"
-        msg info "Using branch from launcher: $XRUN_BRANCH"
     else
         # Fallback: auto-detect from script path
         if [[ "${BASH_SOURCE[0]}" == *"feature/"* ]] || [[ "$0" == *"feature/"* ]]; then
@@ -554,10 +548,9 @@ EOF
         else
             XRUN_BRANCH="main"
         fi
-        msg info "Auto-detected branch: $XRUN_BRANCH"
     fi
     
-    msg info "Downloading xrun from $XRUN_BRANCH branch..."
+    msg info "Installing xrun utility from $XRUN_BRANCH of termux_dual_xfce..."
     if curl -sL "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$XRUN_BRANCH/xrun" -o "$PREFIX/bin/xrun"; then
         chmod +x "$PREFIX/bin/xrun"
         cp "$PREFIX/bin/xrun" "$HOME/xrun" 2>/dev/null || true

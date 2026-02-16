@@ -13,8 +13,8 @@ start_xfce() {
     echo -e "${GREEN}[Termux XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log
     echo "Select GPU acceleration mode:"
     echo "  0) No acceleration (software rendering)"
-    echo "  1) VIRGL (OpenGL)"
-    echo "  2) ZINK (Vulkan)"
+    echo "  1) ZINK (Vulkan)"
+    echo "  2) VIRGL (OpenGL)"
     echo -n "Choice [0/1/2]: " > /dev/tty
     read -r gpu_choice < /dev/tty
     
@@ -41,6 +41,16 @@ start_xfce() {
     sleep 1
     
     if [[ "$gpu_choice" == "1" ]]; then
+        # ZINK (Vulkan)
+        echo -e "${GREEN}[Termux XFCE]${NC} Using ZINK (Vulkan)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server --use-egl-surfaceless --use-gles &
+        else
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server_android &
+        fi
+        sleep 2
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "2" ]]; then
         # VIRGL (OpenGL)
         echo -e "${GREEN}[Termux XFCE]${NC} Using VIRGL (OpenGL)" | tee -a ~/xfce_gpu.log
         if echo "$gpu_info" | grep -iq "mali"; then
@@ -50,12 +60,6 @@ start_xfce() {
         fi
         sleep 2
         dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-    elif [[ "$gpu_choice" == "2" ]]; then
-        # ZINK (Vulkan)
-        echo -e "${GREEN}[Termux XFCE]${NC} Using ZINK (Vulkan)" | tee -a ~/xfce_gpu.log
-        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server --use-egl-surfaceless --use-gles &
-        sleep 2
-        dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
     else
         # Software rendering
         echo -e "${YELLOW}[Termux XFCE]${NC} Software rendering mode" | tee -a ~/xfce_gpu.log
