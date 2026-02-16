@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Termux XFCE Setup Initializer
+# Termux Dual XFCE Setup Initializer
 # This script fetches available branches and downloads the setup script
 
 set -euo pipefail
@@ -11,7 +11,7 @@ SCRIPT_NAME="termux-xfce-dual-setup.sh"
 
 echo ""
 echo "┌────────────────────────────────────┐"
-echo "│  Termux XFCE Setup Initializer     │"
+echo "│ Termux Dual XFCE Setup Initializer │"
 echo "└────────────────────────────────────┘"
 echo ""
 
@@ -29,11 +29,16 @@ echo ""
 echo "Available branches:"
 i=1
 declare -A branch_map
+
+# Sort branches: main first, then others alphabetically
+SORTED_BRANCHES=$(echo "$BRANCHES" | grep -E '^main$'; echo "$BRANCHES" | grep -vE '^main$' | sort)
+
 while IFS= read -r branch; do
+    [[ -z "$branch" ]] && continue
     echo "  $i) $branch"
     branch_map[$i]="$branch"
     ((i++))
-done <<< "$BRANCHES"
+done <<< "$SORTED_BRANCHES"
 
 # Get user choice
 echo "" > /dev/tty
