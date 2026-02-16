@@ -29,8 +29,8 @@ A lightweight script to set up native XFCE desktop environment and Debian proot 
 
 Download and install both apps on your Android device:
 
-1. **Termux** - [Download from GitHub](https://github.com/termux/termux-app/releases/latest) or [F-Droid](https://f-droid.org/packages/com.termux/) (select arm64-v8a version)
-2. **Termux-X11** - [Download from GitHub](https://github.com/termux/termux-x11/releases/latest) (select arm64-v8a version)
+1. **Termux** - [Download from GitHub](https://github.com/termux/termux-app/releases/latest) or [F-Droid](https://f-droid.org/packages/com.termux/) (select arm64-v8a for 64-bit or armeabi-v7a for 32-bit)
+2. **Termux-X11** - [Download from GitHub](https://github.com/termux/termux-x11/releases/latest) (select arm64-v8a for 64-bit or armeabi-v7a for 32-bit)
 
 ⚠️ **Important**: Use Termux from GitHub or F-Droid for full functionality.
 
@@ -39,13 +39,13 @@ Download and install both apps on your Android device:
 Once both Termux and Termux-X11 are installed, open Termux and copy-paste this command, then follow the installation prompts:
 
 ```bash
-curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/install.sh | bash
+curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh | bash
 ```
 
-The launcher will:
+This script will:
 1. Fetch available branches from the repository
-2. Let you choose which version to install (stable or experimental)
-3. Automatically download and run the installer from your selected branch
+2. Let you choose which branch to install from (main/stable or feature branches)
+3. Automatically download and run the setup script from your selected branch
 
 **Alternative**: Direct installation from main branch (stable):
 
