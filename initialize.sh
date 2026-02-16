@@ -121,10 +121,6 @@ else
 fi
 
 echo ""
-echo "[DEBUG] Downloads complete, preparing prompt"
-
-# Restore terminal state
-exec < /dev/tty
 
 echo "[DEBUG] About to show tip message"
 
@@ -136,10 +132,14 @@ read -r response
 echo "[DEBUG] User response: $response"
 
 if [[ "$response" =~ ^[Nn]$ ]]; then
+    echo "[DEBUG] User chose to skip setup"
     echo "Setup skipped. Running xrun..."
     export INSTALLER_BRANCH="$SELECTED_BRANCH"
     xrun
 else
+    # Restore terminal state
+    exec < /dev/tty
+    echo "[DEBUG] User chose to run setup"
     export INSTALLER_BRANCH="$SELECTED_BRANCH"
     bash "$SCRIPT_NAME"
 fi
