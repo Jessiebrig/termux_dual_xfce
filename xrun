@@ -159,12 +159,12 @@ show_menu() {
         echo "      Stop all X11 sessions"
         echo ""
         echo -e "${CYAN}Setup:${NC}"
-        echo -e "  ${GREEN}9${NC} - Run Initializer"
+        echo -e "  ${GREEN}7${NC} - Run Initializer"
         echo "      Download and run initialize script"
         echo ""
         echo -e "  ${YELLOW}0${NC} - Exit"
         echo ""
-        echo -n "Select option [0-6,9]: " > /dev/tty
+        echo -n "Select option [0-7]: " > /dev/tty
         read choice < /dev/tty
         
         case $choice in
@@ -214,7 +214,7 @@ show_menu() {
                 echo -n "Press Enter to continue..." > /dev/tty
                 read < /dev/tty
                 ;;
-            9)
+            7)
                 echo ""
                 echo -e "${GREEN}Running initializer...${NC}"
                 curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh | bash
