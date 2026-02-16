@@ -15,7 +15,8 @@ start_xfce() {
     echo "  0) No acceleration (software rendering)"
     echo "  1) ZINK (Vulkan)"
     echo "  2) VIRGL (OpenGL)"
-    echo -n "Choice [0/1/2]: " > /dev/tty
+    echo "  3) Native Turnip (Experimental)"
+    echo -n "Choice [0/1/2/3]: " > /dev/tty
     read -r gpu_choice < /dev/tty
     
     kill -9 $(pgrep -f "termux.x11") 2>/dev/null
@@ -60,6 +61,10 @@ start_xfce() {
         fi
         sleep 2
         dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "3" ]]; then
+        # Native Turnip (Direct Vulkan)
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using Native Turnip (Experimental)" | tee -a ~/xfce_gpu.log
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
     else
         # Software rendering
         echo -e "${YELLOW}[Termux XFCE]${NC} Software rendering mode" | tee -a ~/xfce_gpu.log
