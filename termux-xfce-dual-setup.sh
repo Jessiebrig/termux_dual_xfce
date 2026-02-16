@@ -378,9 +378,6 @@ main() {
         fi
     done
     
-    # Install conky-cli for native Termux (terminal-based, no X11 conflicts)
-    install_pkg conky-cli || msg warn "Failed to install conky-cli (non-critical)"
-    
     # Try to install optional Vulkan packages (check compatibility first)
     msg info "Checking Vulkan driver compatibility..."
     if pkg install -y --dry-run vulkan-loader-android 2>/dev/null | grep -q "0 newly installed"; then
@@ -401,12 +398,8 @@ main() {
     msg info "Creating directory structure..."
     mkdir -p "$HOME"/{Desktop,Downloads,.config/xfce4/xfconf/xfce-perchannel-xml,.config/autostart}
     
-    # Auto-start terminal and conky-cli on Termux XFCE startup
+    # Auto-start terminal on Termux XFCE startup
     create_autostart "$HOME/.config/autostart" "Terminal" "xfce4-terminal"
-    create_autostart "$HOME/.config/autostart" "Conky" "conky-cli"
-    
-    # Download conky config for native Termux
-    download_conky_config "$HOME/.conkyrc" "native Termux"
     
     # Initialize XFCE settings to prevent first-run errors
     msg info "Initializing XFCE settings..."

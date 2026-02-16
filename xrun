@@ -55,6 +55,10 @@ start_xfce() {
         echo -e "${YELLOW}[Termux XFCE]${NC} Software rendering mode" | tee -a ~/xfce_gpu.log
         dbus-launch --exit-with-session xfce4-session &
     fi
+    
+    # Launch terminal with fastfetch after XFCE starts
+    sleep 3
+    DISPLAY=:0 xfce4-terminal -e "bash -c 'fastfetch; exec bash'" &
 }
 
 # Function: Start Debian XFCE
