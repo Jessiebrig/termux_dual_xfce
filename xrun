@@ -73,14 +73,20 @@ start_debian_xfce() {
     # GPU detection and logging
     gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
     echo -e "${GREEN}[Debian XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log
-    if echo "$gpu_info" | grep -iq "adreno"; then
-        echo -e "${GREEN}[Debian XFCE]${NC} Hardware acceleration: Enabled (Turnip/Adreno 6XX/7XX)" | tee -a ~/xfce_gpu.log
-    else
-        echo -e "${YELLOW}[Debian XFCE]${NC} Hardware acceleration: Software rendering (Turnip requires Adreno 6XX/7XX)" | tee -a ~/xfce_gpu.log
-    fi
-
+    
+    # Prompt user for GPU acceleration
+    echo -n "Enable GPU acceleration? (y/n): " > /dev/tty
+    read use_gpu < /dev/tty
+    
     username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
-    proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
+    
+    if [[ "$use_gpu" =~ ^[Yy]$ ]]; then
+        echo -e "${GREEN}[Debian XFCE]${NC} Hardware acceleration: Enabled" | tee -a ~/xfce_gpu.log
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
+    else
+        echo -e "${YELLOW}[Debian XFCE]${NC} Hardware acceleration: Disabled" | tee -a ~/xfce_gpu.log
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
+    fi
 }
 
 # Function: Enter Debian proot CLI
