@@ -439,6 +439,9 @@ conky.config = {
     gap_x = 10,
     gap_y = 40,
     update_interval = 2.0,
+    use_xft = true,
+    font = 'DejaVu Sans Mono:size=12',
+    background = true,
 }
 conky.text = [[
 ${color grey}System Info:
