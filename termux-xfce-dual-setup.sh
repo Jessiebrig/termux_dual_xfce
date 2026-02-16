@@ -427,6 +427,28 @@ NoDisplay=false
 X-GNOME-Autostart-enabled=true
 Name=Terminal
 EOF
+    
+    # Create conky config to avoid window conflicts
+    cat > "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.conkyrc" <<'EOF'
+conky.config = {
+    own_window = true,
+    own_window_type = 'normal',
+    own_window_transparent = true,
+    own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
+    alignment = 'top_right',
+    gap_x = 10,
+    gap_y = 40,
+    update_interval = 2.0,
+}
+conky.text = [[
+${color grey}System Info:
+${color}Hostname: $nodename
+${color}Uptime: $uptime
+${color}RAM: $mem/$memmax
+${color}CPU: ${cpu cpu0}%
+]]
+EOF
+    
     chown -R $(stat -c '%u:%g' "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username") "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config" 2>&1 | tee -a "$LOG_FILE" || msg warn "chown failed (non-critical)"
     
     # Setup Debian environment
@@ -544,6 +566,8 @@ EOF
     echo -e "  ${C_OK}xrun dgpu <command>${C_RESET}     - Run Debian apps with hardware acceleration"
     echo -e "  ${C_OK}xrun dfps <command>${C_RESET}     - Run Debian with hardware acceleration and FPS overlay"
     echo -e "  ${C_OK}xrun kill_termux_x11${C_RESET}    - Stop all Termux-X11 sessions"
+    echo ""
+    echo "Tip: Run 'xrun' and select option 7 to update/reinstall"
     echo ""
     echo "Note: If 'xrun' is not found, use '~/xrun' or restart Termux"
     echo ""
