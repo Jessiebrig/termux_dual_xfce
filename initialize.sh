@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Termux XFCE Installer Launcher
+# Termux XFCE Setup Initializer
 # This script fetches available branches and downloads the setup script
 
 set -euo pipefail
@@ -11,7 +11,7 @@ SCRIPT_NAME="termux-xfce-dual-setup.sh"
 
 echo ""
 echo "┌────────────────────────────────────┐"
-echo "│   Termux XFCE Installer Launcher   │"
+echo "│  Termux XFCE Setup Initializer     │"
 echo "└────────────────────────────────────┘"
 echo ""
 
@@ -38,10 +38,10 @@ done <<< "$BRANCHES"
 # Get user choice
 echo ""
 echo -n "Select branch [1]: "
-read -r choice
+read -r choice < /dev/tty
 choice=${choice:-1}
 
-SELECTED_BRANCH="${branch_map[$choice]}"
+SELECTED_BRANCH="${branch_map[$choice]:-}"
 if [[ -z "$SELECTED_BRANCH" ]]; then
     echo "Invalid choice. Defaulting to first branch."
     SELECTED_BRANCH="${branch_map[1]}"
