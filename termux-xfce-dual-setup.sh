@@ -59,7 +59,7 @@ cleanup() {
     local exit_code=$?
     if [ $exit_code -ne 0 ] && [ $exit_code -ne 130 ]; then
         # Add quit instruction at top and bottom
-        sed -i "1i=== Press 'q' to close this log viewer ===\n" "$LOG_FILE"
+        { echo "=== Press 'q' to close this log viewer ==="; echo ""; cat "$LOG_FILE"; } > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
         echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE"
         msg error "Installation failed."
         echo ""
@@ -82,7 +82,7 @@ cleanup() {
                 [Ss])
                     SAVED_FILE="$HOME/xfce_install_full.txt"
                     cp "$FULL_OUTPUT_FILE" "$SAVED_FILE" || true
-                    sed -i "1i=== Press 'q' to close this log viewer ===\n" "$SAVED_FILE" 2>/dev/null || true
+                    { echo "=== Press 'q' to close this log viewer ==="; echo ""; cat "$SAVED_FILE"; } > "$SAVED_FILE.tmp" && mv "$SAVED_FILE.tmp" "$SAVED_FILE" 2>/dev/null || true
                     echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null || true
                     echo "Saved to ~/xfce_install_full.txt"
                     less "$SAVED_FILE" || true
@@ -334,8 +334,8 @@ EOF
     # Initialize XFCE settings to prevent first-run errors
     msg info "Initializing XFCE settings..."
     export DISPLAY=:0
-    xfconf-query -c xfce4-session -p /startup/compat/LaunchGNOME -n -t bool -s false 2>/dev/null || true
-    xfconf-query -c xfce4-session -p /general/FailsafeSessionName -n -t string -s "Failsafe" 2>/dev/null || true
+    xfconf-query -c xfce4-session -p /startup/compat/LaunchGNOME -n -t bool -s false 2>&1 | tee -a "$LOG_FILE" || msg warn "xfconf-query LaunchGNOME failed (non-critical)"
+    xfconf-query -c xfce4-session -p /general/FailsafeSessionName -n -t string -s "Failsafe" 2>&1 | tee -a "$LOG_FILE" || msg warn "xfconf-query FailsafeSessionName failed (non-critical)"
     
     # Setup aliases
     msg info "Configuring shell aliases..."
@@ -412,7 +412,7 @@ NoDisplay=false
 X-GNOME-Autostart-enabled=true
 Name=Terminal with Fastfetch
 EOF
-    chown -R $(stat -c '%u:%g' "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username") "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config" 2>/dev/null || true
+    chown -R $(stat -c '%u:%g' "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username") "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.config" 2>&1 | tee -a "$LOG_FILE" || msg warn "chown failed (non-critical)"
     
     # Setup Debian environment
     if ! grep -q "export DISPLAY=:0" "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/$username/.bashrc" 2>/dev/null; then
@@ -453,7 +453,7 @@ EOF
             echo 'deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main' | tee /etc/apt/sources.list.d/gierens.list
             chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
             apt update
-        " 2>/dev/null || true
+        " 2>&1 | tee -a "$LOG_FILE" || msg warn "eza repository setup failed (non-critical)"
     fi
     
     # Install aesthetic packages
@@ -472,20 +472,35 @@ EOF
         msg ok "starship already installed, skipping..."
     else
         msg info "Installing starship..."
-        proot-distro login debian --shared-tmp -- bash -c "curl -sS https://starship.rs/install.sh | sh -s -- -y" || msg warn "Failed to install starship (non-critical)"
+        proot-distro login debian --shared-tmp -- bash -c "curl -sS https://starship.rs/install.sh | sh -s -- -y" 2>&1 | tee -a "$LOG_FILE" || msg warn "Failed to install starship (non-critical)"
     fi
     
     msg ok "Aesthetic packages installation complete"
     
     # Download xrun utility
     msg info "Installing xrun utility..."
-    if curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/xrun -o "$PREFIX/bin/xrun"; then
+    
+    # Use branch passed from launcher, or detect from script path, or default to main
+    if [[ -n "${INSTALLER_BRANCH:-}" ]]; then
+        XRUN_BRANCH="$INSTALLER_BRANCH"
+        msg info "Using branch from launcher: $XRUN_BRANCH"
+    else
+        # Fallback: auto-detect from script path
+        if [[ "${BASH_SOURCE[0]}" == *"feature/"* ]] || [[ "$0" == *"feature/"* ]]; then
+            XRUN_BRANCH=$(echo "${BASH_SOURCE[0]}" | grep -oP 'feature/[^/]+' | head -1)
+        else
+            XRUN_BRANCH="main"
+        fi
+        msg info "Auto-detected branch: $XRUN_BRANCH"
+    fi
+    
+    msg info "Downloading xrun from $XRUN_BRANCH branch..."
+    if curl -sL "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$XRUN_BRANCH/xrun" -o "$PREFIX/bin/xrun"; then
         chmod +x "$PREFIX/bin/xrun"
-        # Also create a copy in home directory as backup
         cp "$PREFIX/bin/xrun" "$HOME/xrun" 2>/dev/null || true
         chmod +x "$HOME/xrun" 2>/dev/null || true
     else
-        msg error "Failed to download xrun utility"
+        msg error "Failed to download xrun utility from $XRUN_BRANCH"
         exit 1
     fi
     
@@ -524,8 +539,8 @@ EOF
         echo -n "View log file? (y/N): " > /dev/tty
         read -r response < /dev/tty
         if [[ "$response" =~ ^[Yy]$ ]]; then
-            sed -i "1i=== Press 'q' to close this log viewer ===\n" "$LOG_FILE" 2>/dev/null
-            echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE" 2>/dev/null
+            { echo "=== Press 'q' to close this log viewer ==="; echo ""; cat "$LOG_FILE"; } > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+            echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE"
             less "$LOG_FILE" || true
         fi
         
@@ -540,8 +555,8 @@ EOF
             [Ss])
                 SAVED_FILE="$HOME/xfce_install_full.txt"
                 cp "$FULL_OUTPUT_FILE" "$SAVED_FILE"
-                sed -i "1i=== Press 'q' to close this log viewer ===\n" "$SAVED_FILE" 2>/dev/null
-                echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE" 2>/dev/null
+                { echo "=== Press 'q' to close this log viewer ==="; echo ""; cat "$SAVED_FILE"; } > "$SAVED_FILE.tmp" && mv "$SAVED_FILE.tmp" "$SAVED_FILE"
+                echo "=== Press 'q' to close this log viewer ===" >> "$SAVED_FILE"
                 echo "Saved to ~/xfce_install_full.txt" > /dev/tty
                 less "$SAVED_FILE" || true
                 rm -f "$FULL_OUTPUT_FILE"
