@@ -36,8 +36,8 @@ if echo "$BRANCHES" | grep -q '^main$'; then
     commit_data=$(curl -s "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/main")
     commit_msg=$(echo "$commit_data" | grep -m1 '"message":' | cut -d'"' -f4 | head -c 40)
     commit_datetime=$(echo "$commit_data" | grep '"date":' | head -1 | cut -d'"' -f4)
-    commit_date=$(echo "$commit_datetime" | cut -d'T' -f1)
-    commit_time=$(echo "$commit_datetime" | cut -d'T' -f2 | cut -d':' -f1,2)
+    commit_date=$(date -d "$commit_datetime" '+%Y-%m-%d' 2>/dev/null || echo "$commit_datetime" | cut -d'T' -f1)
+    commit_time=$(date -d "$commit_datetime" '+%H:%M' 2>/dev/null || echo "$commit_datetime" | cut -d'T' -f2 | cut -d':' -f1,2)
     [[ ${#commit_msg} -eq 40 ]] && commit_msg="${commit_msg}..."
     
     echo "  $i) main - $commit_msg ($commit_date $commit_time)"
@@ -54,8 +54,8 @@ while IFS= read -r branch; do
     commit_data=$(curl -s "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/$branch")
     commit_msg=$(echo "$commit_data" | grep -m1 '"message":' | cut -d'"' -f4 | head -c 40)
     commit_datetime=$(echo "$commit_data" | grep '"date":' | head -1 | cut -d'"' -f4)
-    commit_date=$(echo "$commit_datetime" | cut -d'T' -f1)
-    commit_time=$(echo "$commit_datetime" | cut -d'T' -f2 | cut -d':' -f1,2)
+    commit_date=$(date -d "$commit_datetime" '+%Y-%m-%d' 2>/dev/null || echo "$commit_datetime" | cut -d'T' -f1)
+    commit_time=$(date -d "$commit_datetime" '+%H:%M' 2>/dev/null || echo "$commit_datetime" | cut -d'T' -f2 | cut -d':' -f1,2)
     [[ ${#commit_msg} -eq 40 ]] && commit_msg="${commit_msg}..."
     
     echo "  $i) $branch - $commit_msg ($commit_date $commit_time)"
