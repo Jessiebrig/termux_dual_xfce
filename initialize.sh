@@ -33,7 +33,10 @@ declare -A branch_map
 # Sort branches: main first, then others alphabetically
 if echo "$BRANCHES" | grep -q '^main$'; then
     # Main exists, add it first
-    echo "  $i) main"
+    commit_msg=$(curl -s "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/main" | grep -m1 '"message":' | cut -d'"' -f4 | head -c 50)
+    [[ ${#commit_msg} -eq 50 ]] && commit_msg="${commit_msg}..."
+    
+    echo "  $i) main - $commit_msg"
     branch_map[$i]="main"
     ((i++))
 fi
@@ -42,7 +45,12 @@ fi
 while IFS= read -r branch; do
     [[ -z "$branch" ]] && continue
     [[ "$branch" == "main" ]] && continue
-    echo "  $i) $branch"
+    
+    # Fetch last commit message for this branch
+    commit_msg=$(curl -s "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/$branch" | grep -m1 '"message":' | cut -d'"' -f4 | head -c 50)
+    [[ ${#commit_msg} -eq 50 ]] && commit_msg="${commit_msg}..."
+    
+    echo "  $i) $branch - $commit_msg"
     branch_map[$i]="$branch"
     ((i++))
 done <<< "$(echo "$BRANCHES" | grep -v '^main$' | sort)"
