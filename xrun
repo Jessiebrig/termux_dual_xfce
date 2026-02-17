@@ -476,8 +476,20 @@ kill_termux_x11() {
 run_initializer() {
     log "run_initializer: Launching initializer script"
     echo ""
-    echo -e "${GREEN}Launching initializer (downloads latest xrun and setup script)...${NC}"
-    curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o ~/initialize.sh && exec bash ~/initialize.sh
+    echo -e "${GREEN}Downloading latest initializer script...${NC}"
+    
+    if curl -fsSL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o ~/initialize.sh; then
+        echo -e "${GREEN}Download successful! Launching initializer...${NC}"
+        sleep 1
+        exec bash ~/initialize.sh
+    else
+        echo -e "${YELLOW}Failed to download initializer script.${NC}"
+        echo "Please check your internet connection and try again."
+        echo ""
+        echo -n "Press Enter to continue..." > /dev/tty
+        read < /dev/tty
+        return 1
+    fi
 }
 
 #==============================================================================
