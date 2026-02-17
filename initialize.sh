@@ -37,8 +37,7 @@ if [[ -n "${XRUN_UPDATE:-}" ]]; then
         chmod +x "$PREFIX/bin/xrun" "$HOME/xrun" 2>/dev/null || true
         echo "✓ xrun updated successfully"
         echo ""
-        echo -n "Press Enter to relaunch xrun..." > /dev/tty
-        read < /dev/tty
+        read -p "Press Enter to relaunch xrun..."
         exec "$NEW_XRUN"
     else
         echo "✗ Failed to download xrun"
