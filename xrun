@@ -487,7 +487,7 @@ run_initializer() {
     echo ""
     echo -e "${GREEN}Downloading latest initializer script...${NC}"
     
-    if curl -fsSL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o "$tmp"; then
+    if curl -L https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o "$tmp"; then
         echo -e "${GREEN}Download successful! Launching initializer...${NC}"
         echo "[DEBUG] Temp file: $tmp"
         echo "[DEBUG] File size: $(stat -c%s "$tmp" 2>/dev/null || stat -f%z "$tmp" 2>/dev/null || echo 'unknown') bytes"
