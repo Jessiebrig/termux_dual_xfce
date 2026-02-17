@@ -273,8 +273,6 @@ main() {
         SETUP_DATE=$(ls -l "${BASH_SOURCE[0]}" 2>/dev/null | awk '{print $6, $7, $8}' || stat -c %y "${BASH_SOURCE[0]}" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "${BASH_SOURCE[0]}" 2>/dev/null || date -r "${BASH_SOURCE[0]}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "Unknown")
         echo ""
         echo "File date: ${SETUP_DATE}"
-        echo ""
-        sleep 2
     fi
     
     echo ""
