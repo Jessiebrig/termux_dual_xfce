@@ -20,6 +20,12 @@ log() {
     echo "$msg" >> "$LOG_FILE"
 }
 
+# Display script info
+if [[ -f "$PREFIX/bin/xrun" ]]; then
+    XRUN_DATE=$(stat -c %y "$PREFIX/bin/xrun" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$PREFIX/bin/xrun" 2>/dev/null || echo "Unknown")
+    echo "xrun | File date: ${XRUN_DATE}"
+fi
+
 #==============================================================================
 # GPU Configuration Functions - Termux Layer
 #==============================================================================

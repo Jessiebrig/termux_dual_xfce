@@ -269,6 +269,14 @@ verify_system() {
 # Main installation
 main() {
     log "FUNCTION: main() - Starting main installation"
+    
+    # Display script file info
+    if [[ -f "${BASH_SOURCE[0]}" ]]; then
+        SETUP_DATE=$(stat -c %y "${BASH_SOURCE[0]}" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "${BASH_SOURCE[0]}" 2>/dev/null || echo "Unknown")
+        echo ""
+        echo "Termux XFCE Dual Setup | File date: ${SETUP_DATE}"
+    fi
+    
     clear
     echo ""
     echo "┌────────────────────────────────────┐"
