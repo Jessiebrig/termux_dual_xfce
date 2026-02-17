@@ -274,31 +274,7 @@ main() {
     
     # Display script file info AFTER clear
     if [[ -f "${BASH_SOURCE[0]}" ]]; then
-        echo "[DEBUG] Checking file date for: ${BASH_SOURCE[0]}"
-        
-        # Method 1: stat -c (GNU/Linux)
-        SETUP_DATE_1=$(stat -c %y "${BASH_SOURCE[0]}" 2>/dev/null || echo "N/A")
-        echo "[DEBUG] Method 1 (stat -c): $SETUP_DATE_1"
-        
-        # Method 2: stat -f (BSD/macOS)
-        SETUP_DATE_2=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "${BASH_SOURCE[0]}" 2>/dev/null || echo "N/A")
-        echo "[DEBUG] Method 2 (stat -f): $SETUP_DATE_2"
-        
-        # Method 3: ls -l
-        SETUP_DATE_3=$(ls -l "${BASH_SOURCE[0]}" 2>/dev/null | awk '{print $6, $7, $8}' || echo "N/A")
-        echo "[DEBUG] Method 3 (ls -l): $SETUP_DATE_3"
-        
-        # Method 4: date command with file reference
-        SETUP_DATE_4=$(date -r "${BASH_SOURCE[0]}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "N/A")
-        echo "[DEBUG] Method 4 (date -r): $SETUP_DATE_4"
-        
-        # Use first working method
-        SETUP_DATE="$SETUP_DATE_1"
-        [[ "$SETUP_DATE" == "N/A" ]] && SETUP_DATE="$SETUP_DATE_2"
-        [[ "$SETUP_DATE" == "N/A" ]] && SETUP_DATE="$SETUP_DATE_3"
-        [[ "$SETUP_DATE" == "N/A" ]] && SETUP_DATE="$SETUP_DATE_4"
-        [[ "$SETUP_DATE" == "N/A" ]] && SETUP_DATE="Unknown"
-        
+        SETUP_DATE=$(stat -c %y "${BASH_SOURCE[0]}" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "${BASH_SOURCE[0]}" 2>/dev/null || ls -l "${BASH_SOURCE[0]}" 2>/dev/null | awk '{print $6, $7, $8}' || date -r "${BASH_SOURCE[0]}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "Unknown")
         echo ""
         echo "Termux XFCE Dual Setup | File date: ${SETUP_DATE}"
         echo ""
