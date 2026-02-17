@@ -35,24 +35,24 @@ fi
 # Function: Prompt for Termux GPU mode
 prompt_termux_gpu() {
     gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
-    echo -e "${GREEN}[Termux XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log
-    echo "Select GPU acceleration mode:"
-    echo "  0) No acceleration (software rendering)"
-    echo "  1) ZINK (Vulkan via virpipe)"
-    echo "  2) VIRGL (OpenGL)"
-    echo "  3) Native Turnip (Experimental)"
-    echo "  4) Native Turnip + Optimizations (Experimental)"
-    echo "  5) Native Turnip + Aggressive Opts (Experimental)"
-    echo "  6) Pure Vulkan Mode (Experimental)"
-    echo "  7) ZINK Alternative Threading (Experimental)"
-    echo "  8) ZINK + Mesa Threading (Experimental)"
-    echo "  9) VIRGL + Performance Opts (Experimental)"
-    echo "  10) ZINK + Async Compile (Experimental)"
-    echo "  11) VIRGL + Async + Threading (Experimental)"
-    echo "  12) ZINK + Descriptor Caching (Experimental)"
-    echo "  13) VIRGL + Texture Compression (Experimental)"
-    echo "  14) ZINK + All Optimizations (Experimental)"
-    echo "  15) VIRGL + All Optimizations (Experimental)"
+    echo -e "${GREEN}[Termux XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log > /dev/tty
+    echo "Select GPU acceleration mode:" > /dev/tty
+    echo "  0) No acceleration (software rendering)" > /dev/tty
+    echo "  1) ZINK (Vulkan via virpipe)" > /dev/tty
+    echo "  2) VIRGL (OpenGL)" > /dev/tty
+    echo "  3) Native Turnip (Experimental)" > /dev/tty
+    echo "  4) Native Turnip + Optimizations (Experimental)" > /dev/tty
+    echo "  5) Native Turnip + Aggressive Opts (Experimental)" > /dev/tty
+    echo "  6) Pure Vulkan Mode (Experimental)" > /dev/tty
+    echo "  7) ZINK Alternative Threading (Experimental)" > /dev/tty
+    echo "  8) ZINK + Mesa Threading (Experimental)" > /dev/tty
+    echo "  9) VIRGL + Performance Opts (Experimental)" > /dev/tty
+    echo "  10) ZINK + Async Compile (Experimental)" > /dev/tty
+    echo "  11) VIRGL + Async + Threading (Experimental)" > /dev/tty
+    echo "  12) ZINK + Descriptor Caching (Experimental)" > /dev/tty
+    echo "  13) VIRGL + Texture Compression (Experimental)" > /dev/tty
+    echo "  14) ZINK + All Optimizations (Experimental)" > /dev/tty
+    echo "  15) VIRGL + All Optimizations (Experimental)" > /dev/tty
     echo -n "Choice [0-15]: " > /dev/tty
     read -r gpu_choice < /dev/tty
     gpu_choice=$(echo "$gpu_choice" | tr -cd '0-9')
@@ -258,11 +258,11 @@ apply_termux_gpu() {
 
 # Function: Prompt for Debian proot driver
 prompt_proot_driver() {
-    echo "Select proot driver:"
-    echo "  0) Software rendering (no GPU)"
-    echo "  1) ZINK (Vulkan via virpipe)"
-    echo "  2) VIRGL (OpenGL via virpipe)"
-    echo "  3) Turnip (Native Vulkan - Experimental)"
+    echo "Select proot driver:" > /dev/tty
+    echo "  0) Software rendering (no GPU)" > /dev/tty
+    echo "  1) ZINK (Vulkan via virpipe)" > /dev/tty
+    echo "  2) VIRGL (OpenGL via virpipe)" > /dev/tty
+    echo "  3) Turnip (Native Vulkan - Experimental)" > /dev/tty
     echo -n "Choice [0-3]: " > /dev/tty
     read -r driver_choice < /dev/tty
     echo "$driver_choice"
