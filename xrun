@@ -25,6 +25,10 @@ if [[ -f "$PREFIX/bin/xrun" ]]; then
     XRUN_DATE=$(stat -c %y "$PREFIX/bin/xrun" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$PREFIX/bin/xrun" 2>/dev/null || ls -l "$PREFIX/bin/xrun" 2>/dev/null | awk '{print $6, $7, $8}' || date -r "$PREFIX/bin/xrun" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "Unknown")
     echo "xrun | File date: ${XRUN_DATE}"
     echo ""
+elif [[ -f "${BASH_SOURCE[0]}" ]]; then
+    XRUN_DATE=$(stat -c %y "${BASH_SOURCE[0]}" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "${BASH_SOURCE[0]}" 2>/dev/null || ls -l "${BASH_SOURCE[0]}" 2>/dev/null | awk '{print $6, $7, $8}' || date -r "${BASH_SOURCE[0]}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "Unknown")
+    echo "xrun | File date: ${XRUN_DATE}"
+    echo ""
 fi
 
 #==============================================================================

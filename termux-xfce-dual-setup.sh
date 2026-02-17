@@ -173,10 +173,6 @@ EOF
 verify_system() {
     log "FUNCTION: verify_system() - Starting system verification"
     echo ""
-    echo "┌────────────────────────────────────┐"
-    echo "│   Pre-Installation System Checks   │"
-    echo "└────────────────────────────────────┘"
-    echo ""
     
     local errors=0
     local warnings=0
@@ -276,7 +272,7 @@ main() {
     if [[ -f "${BASH_SOURCE[0]}" ]]; then
         SETUP_DATE=$(stat -c %y "${BASH_SOURCE[0]}" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "${BASH_SOURCE[0]}" 2>/dev/null || ls -l "${BASH_SOURCE[0]}" 2>/dev/null | awk '{print $6, $7, $8}' || date -r "${BASH_SOURCE[0]}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "Unknown")
         echo ""
-        echo "Termux XFCE Dual Setup | File date: ${SETUP_DATE}"
+        echo "File date: ${SETUP_DATE}"
         echo ""
         sleep 2
     fi
@@ -289,7 +285,7 @@ main() {
     
     # Display branch information
     if [[ -n "${INSTALLER_BRANCH:-}" ]]; then
-        msg info "Branch: $INSTALLER_BRANCH"
+        msg info "GitHub Branch: $INSTALLER_BRANCH"
         echo ""
     fi
     
