@@ -138,6 +138,9 @@ if [[ "$response" =~ ^[Yy]$ ]]; then
     exec < /dev/tty
     export INSTALLER_BRANCH="$SELECTED_BRANCH"
     bash "$SCRIPT_NAME"
+elif [[ -n "${XRUN_RELAUNCH:-}" ]]; then
+    echo "Updates downloaded. Relaunching xrun..."
+    exec xrun
 else
     echo "Setup skipped. Running xrun..."
     xrun
