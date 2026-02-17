@@ -15,7 +15,9 @@ LOG_FILE="$HOME/xfce_gpu.log"
 
 # Logging function - displays in terminal AND writes to log file
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+    local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+    echo "$msg"
+    echo "$msg" >> "$LOG_FILE"
 }
 
 #==============================================================================
