@@ -270,7 +270,9 @@ verify_system() {
 main() {
     log "FUNCTION: main() - Starting main installation"
     
-    # Display script file info BEFORE clear
+    clear
+    
+    # Display script file info AFTER clear
     if [[ -f "${BASH_SOURCE[0]}" ]]; then
         echo "[DEBUG] Checking file date for: ${BASH_SOURCE[0]}"
         
@@ -303,7 +305,6 @@ main() {
         sleep 2
     fi
     
-    clear
     echo ""
     echo "┌────────────────────────────────────┐"
     echo "│   Native + Debian XFCE Setup       │"
