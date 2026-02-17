@@ -47,6 +47,7 @@ prompt_termux_gpu() {
     echo "  15) VIRGL + All Optimizations (Experimental)"
     echo -n "Choice [0-15]: " > /dev/tty
     read -r gpu_choice < /dev/tty
+    gpu_choice=$(echo "$gpu_choice" | tr -cd '0-9')
     echo "[DEBUG] You entered: '$gpu_choice' (length=${#gpu_choice})"
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] prompt_termux_gpu: User entered '$gpu_choice' (length=${#gpu_choice})" >> ~/xfce_gpu.log
     echo "$gpu_choice"
@@ -55,12 +56,11 @@ prompt_termux_gpu() {
 # Function: Apply Termux GPU configuration
 apply_termux_gpu() {
     local gpu_choice="$1"
-    local launch_xfce="${2:-true}"  # Default to true for Native Termux XFCE
+    local launch_xfce="${2:-true}"
     local gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
     
     echo "[DEBUG] apply_termux_gpu received: gpu_choice='$gpu_choice' (length=${#gpu_choice}), launch_xfce='$launch_xfce'"
     log "apply_termux_gpu: gpu_choice='$gpu_choice', launch_xfce='$launch_xfce'"
-    log "apply_termux_gpu: Testing gpu_choice value (length=${#gpu_choice})"
     
     if [[ "$gpu_choice" == "0" ]]; then
         # Software rendering (No acceleration)
