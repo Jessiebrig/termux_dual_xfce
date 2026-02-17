@@ -22,7 +22,31 @@ log() {
 
 # Display script info
 if [[ -f "$PREFIX/bin/xrun" ]]; then
-    XRUN_DATE=$(stat -c %y "$PREFIX/bin/xrun" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$PREFIX/bin/xrun" 2>/dev/null || echo "Unknown")
+    echo "[DEBUG] Checking file date for: $PREFIX/bin/xrun"
+    
+    # Method 1: stat -c (GNU/Linux)
+    XRUN_DATE_1=$(stat -c %y "$PREFIX/bin/xrun" 2>/dev/null || echo "N/A")
+    echo "[DEBUG] Method 1 (stat -c): $XRUN_DATE_1"
+    
+    # Method 2: stat -f (BSD/macOS)
+    XRUN_DATE_2=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$PREFIX/bin/xrun" 2>/dev/null || echo "N/A")
+    echo "[DEBUG] Method 2 (stat -f): $XRUN_DATE_2"
+    
+    # Method 3: ls -l
+    XRUN_DATE_3=$(ls -l "$PREFIX/bin/xrun" 2>/dev/null | awk '{print $6, $7, $8}' || echo "N/A")
+    echo "[DEBUG] Method 3 (ls -l): $XRUN_DATE_3"
+    
+    # Method 4: date command with file reference
+    XRUN_DATE_4=$(date -r "$PREFIX/bin/xrun" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "N/A")
+    echo "[DEBUG] Method 4 (date -r): $XRUN_DATE_4"
+    
+    # Use first working method
+    XRUN_DATE="$XRUN_DATE_1"
+    [[ "$XRUN_DATE" == "N/A" ]] && XRUN_DATE="$XRUN_DATE_2"
+    [[ "$XRUN_DATE" == "N/A" ]] && XRUN_DATE="$XRUN_DATE_3"
+    [[ "$XRUN_DATE" == "N/A" ]] && XRUN_DATE="$XRUN_DATE_4"
+    [[ "$XRUN_DATE" == "N/A" ]] && XRUN_DATE="Unknown"
+    
     echo "xrun | File date: ${XRUN_DATE}"
 fi
 
