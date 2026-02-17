@@ -133,7 +133,6 @@ echo ""
 echo "Tip: Setup script skips already installed packages but will run from the start."
 echo -n "Run setup? (y/N): " > /dev/tty
 read -r response < /dev/tty
-echo "[DEBUG] User input: '$response'" > /dev/tty
 
 if [[ "$response" =~ ^[Yy]$ ]]; then
     exec < /dev/tty
