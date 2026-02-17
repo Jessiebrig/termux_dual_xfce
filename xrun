@@ -489,7 +489,6 @@ run_initializer() {
     
     if curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o "$tmp"; then
         chmod +x "$tmp"
-        export XRUN_UPDATE=1
         exec bash "$tmp"
     else
         echo -e "${YELLOW}Failed to download initializer.${NC}"

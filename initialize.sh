@@ -24,27 +24,6 @@ echo "│ Termux Dual XFCE Setup Initializer │"
 echo "└────────────────────────────────────┘"
 echo ""
 
-# Check if this is xrun update mode
-if [[ -n "${XRUN_UPDATE:-}" ]]; then
-    echo "Updating xrun from main branch..."
-    XRUN_URL="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/main/xrun"
-    NEW_XRUN="${TMPDIR:-/tmp}/xrun_new_$$.sh"
-    
-    if curl -sL "$XRUN_URL" -o "$NEW_XRUN"; then
-        chmod +x "$NEW_XRUN"
-        cp "$NEW_XRUN" "$PREFIX/bin/xrun" 2>/dev/null || true
-        cp "$NEW_XRUN" "$HOME/xrun" 2>/dev/null || true
-        chmod +x "$PREFIX/bin/xrun" "$HOME/xrun" 2>/dev/null || true
-        echo "✓ xrun updated successfully"
-        echo ""
-        read -p "Press Enter to relaunch xrun..."
-        exec "$NEW_XRUN"
-    else
-        echo "✗ Failed to download xrun"
-        exit 1
-    fi
-fi
-
 # Fetch available branches dynamically
 echo "Fetching available branches..."
 BRANCHES=$(curl -sL "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/branches" | grep '"name":' | cut -d'"' -f4)
