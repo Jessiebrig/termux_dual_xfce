@@ -537,7 +537,7 @@ EOF
         msg ok "starship already installed, skipping..."
     else
         msg info "Installing starship..."
-        proot-distro login debian --shared-tmp -- bash -c "curl -sS https://starship.rs/install.sh | sh -s -- -y" 2>&1 | tee -a "$LOG_FILE" || msg warn "Failed to install starship (non-critical)"
+        proot-distro login debian --shared-tmp -- bash -c "curl -sSL https://starship.rs/install.sh | sh -s -- -y" 2>&1 | tee -a "$LOG_FILE" || msg warn "Failed to install starship (non-critical)"
     fi
     
     msg ok "Aesthetic packages installation complete"

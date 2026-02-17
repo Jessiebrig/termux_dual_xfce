@@ -26,7 +26,7 @@ echo ""
 
 # Fetch available branches dynamically
 echo "Fetching available branches..."
-BRANCHES=$(curl -s "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/branches" | grep '"name":' | cut -d'"' -f4)
+BRANCHES=$(curl -sL "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/branches" | grep '"name":' | cut -d'"' -f4)
 
 if [[ -z "$BRANCHES" ]]; then
     echo "Error: Failed to fetch branches. Check your internet connection."
@@ -42,7 +42,7 @@ declare -A branch_map
 # Sort branches: main first, then others alphabetically
 if echo "$BRANCHES" | grep -q '^main$'; then
     # Main exists, add it first
-    commit_data=$(curl -s "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/main")
+    commit_data=$(curl -sL "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/main")
     commit_msg=$(echo "$commit_data" | grep -m1 '"message":' | cut -d'"' -f4 | head -c 40)
     commit_datetime=$(echo "$commit_data" | grep '"date":' | head -1 | cut -d'"' -f4)
     commit_date=$(date -d "$commit_datetime" '+%Y-%m-%d' 2>/dev/null || echo "$commit_datetime" | cut -d'T' -f1)
@@ -60,7 +60,7 @@ while IFS= read -r branch; do
     [[ "$branch" == "main" ]] && continue
     
     # Fetch last commit message and date for this branch
-    commit_data=$(curl -s "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/$branch")
+    commit_data=$(curl -sL "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/$branch")
     commit_msg=$(echo "$commit_data" | grep -m1 '"message":' | cut -d'"' -f4 | head -c 40)
     commit_datetime=$(echo "$commit_data" | grep '"date":' | head -1 | cut -d'"' -f4)
     commit_date=$(date -d "$commit_datetime" '+%Y-%m-%d' 2>/dev/null || echo "$commit_datetime" | cut -d'T' -f1)
