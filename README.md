@@ -21,18 +21,18 @@ A lightweight script to set up native XFCE desktop environment and Debian proot 
 - **Storage**: 8GB+ free space recommended
 - **RAM**: 3GB+ recommended
 
+⚠️ **Important**: 
+- Use Termux from GitHub or F-Droid (NOT Play Store) for full functionality
+- Download APK matching your device architecture (arm64-v8a for 64-bit, armeabi-v7a for 32-bit), or use universal APK if unsure
+
 ## Quick Start
 
 ### Step 1: Download Required Apps
 
 Download and install both apps on your Android device:
 
-1. **Termux** - [Download from GitHub](https://github.com/termux/termux-app/releases/latest) or [F-Droid](https://f-droid.org/packages/com.termux/) (use arm64-v8a or universal APK)
-2. **Termux-X11** - [Download from GitHub](https://github.com/termux/termux-x11/releases/latest) (use arm64-v8a or universal APK)
-
-⚠️ **Important**: 
-- Use Termux from GitHub or F-Droid (NOT Play Store) for full functionality
-- Download APK matching your device architecture, or use universal APK if unsure
+1. **Termux** - [Download from GitHub](https://github.com/termux/termux-app/releases/latest) or [F-Droid](https://f-droid.org/packages/com.termux/)
+2. **Termux-X11** - [Download from GitHub](https://github.com/termux/termux-x11/releases/latest)
 
 ### Step 2: Run Installation
 
@@ -68,7 +68,7 @@ Installation logs are saved to `~/xfce_install.log` for troubleshooting.
 - Hardware acceleration (ZINK, VIRGL, Turnip)
 - Sudo configured for passwordless access
 
-## Starting the Desktop
+## Available Commands
 
 ### Quick Launch Menu
 
@@ -76,42 +76,7 @@ Installation logs are saved to `~/xfce_install.log` for troubleshooting.
 xrun
 ```
 
-Interactive menu for all commands below.
-
-### Native Termux XFCE
-
-Launch the native XFCE desktop environment:
-
-```bash
-xrun xfce
-```
-
-Initiates Termux-X11 session and starts XFCE4 desktop.
-
-### Debian Proot CLI
-
-Access the Debian proot environment from terminal:
-
-```bash
-xrun debian
-```
-
-Note: The display is pre-configured in the Debian proot environment, allowing you to launch GUI applications directly from the terminal.
-
-### Debian Proot XFCE
-
-Launch Debian XFCE desktop environment:
-
-```bash
-xrun debian_xfce
-```
-
-Starts full Debian XFCE desktop in proot environment.
-
-## Available Commands
-
-### Interactive Menu
-- `xrun` - Quick access menu with numbered options for all commands below
+Interactive menu with numbered options for all commands below.
 
 ### Desktop Launchers
 - `xrun xfce` - Launch native Termux XFCE desktop
@@ -125,7 +90,7 @@ Starts full Debian XFCE desktop in proot environment.
 
 ### System Tools
 - `xrun kill_termux_x11` - Stop all Termux-X11 sessions
-- `xrun` (option 9) - Re-run initializer to switch branches or reinstall
+- `xrun update` - Run initializer to update xrun and setup scripts
 - `~/xfce_gpu.log` - View GPU acceleration status logs for both environments
 
 ## 🙏 Credits & Acknowledgments

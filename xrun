@@ -256,7 +256,7 @@ start_debian_xfce() {
     echo "Step 2: Proot GPU (driver)"
     proot_driver_choice=$(prompt_proot_driver)
     
-    username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
+    username=$(get_debian_username)
     
     # Start Termux X11 if not already running
     if ! pgrep -f "termux-x11" > /dev/null; then
@@ -288,31 +288,59 @@ start_debian_xfce() {
 }
 
 #==============================================================================
+# Helper Functions
+#==============================================================================
+
+# Function: Get Debian username
+get_debian_username() {
+    basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*
+}
+
+# Function: Show help message
+show_help() {
+    if [[ -n "$1" ]]; then
+        echo "Unknown command: $1"
+        echo ""
+    fi
+    echo "Available commands:"
+    echo "  xrun                  - Show interactive menu"
+    echo "  xrun xfce             - Launch native Termux XFCE"
+    echo "  xrun debian_xfce      - Launch Debian XFCE"
+    echo "  xrun debian           - Enter Debian proot CLI"
+    echo "  xrun drun <command>   - Run Debian commands"
+    echo "  xrun dgpu <command>   - Run with hardware acceleration"
+    echo "  xrun dfps <command>   - Run with HW accel + FPS display"
+    echo "  xrun kill_termux_x11  - Kill Termux-X11"
+    echo "  xrun update           - Run initializer to update scripts"
+    echo "  xrun help             - Show this help message"
+}
+
+#==============================================================================
 # Debian Proot Utilities
 #==============================================================================
 
 # Function: Enter Debian proot CLI
 start_debian() {
-    username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
+    username=$(get_debian_username)
     export DISPLAY=:0
     proot-distro login debian --user $username --shared-tmp
 }
 
 # Function: Run Debian commands
 drun() {
-    username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
+    username=$(get_debian_username)
     proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 "$@"
 }
 
 # Function: Run with hardware acceleration
 dgpu() {
-    username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
+    username=$(get_debian_username)
     proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform "$@"
 }
 
 # Function: Run with hardware acceleration + FPS display
 dfps() {
-    username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
+    username=$(get_debian_username)
     proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform GALLIUM_HUD=fps "$@"
 }
 
@@ -324,6 +352,13 @@ dfps() {
 kill_termux_x11() {
     am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 >/dev/null 2>&1
     pkill -f termux
+}
+
+# Function: Run initializer to update scripts
+run_initializer() {
+    echo ""
+    echo -e "${GREEN}Launching initializer (downloads latest xrun and setup script)...${NC}"
+    curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o initialize.sh && bash initialize.sh
 }
 
 #==============================================================================
@@ -360,8 +395,8 @@ show_menu() {
         echo "      Stop all X11 sessions"
         echo ""
         echo -e "${CYAN}Setup:${NC}"
-        echo -e "  ${GREEN}9${NC} - Run Initializer"
-        echo "      Download and run initialize script"
+        echo -e "  ${GREEN}9${NC} - Check for Updates"
+        echo "      Download xrun and main script from your selected branch"
         echo ""
         echo -e "  ${YELLOW}0${NC} - Exit"
         echo ""
@@ -416,14 +451,10 @@ show_menu() {
                 read < /dev/tty
                 ;;
             9)
-                echo ""
-                echo -e "${GREEN}Running initializer...${NC}"
-                curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh | bash
+                run_initializer
                 exit 0
                 ;;
             0)
-                echo ""
-                echo "Goodbye!"
                 exit 0
                 ;;
             *)
@@ -446,13 +477,13 @@ if [[ $# -eq 0 ]]; then
 else
     # Arguments provided - run the function
     case "$1" in
-        start_xfce|xfce)
+        xfce)
             start_xfce
             ;;
-        start_debian_xfce|debian_xfce)
+        debian_xfce)
             start_debian_xfce
             ;;
-        start_debian|debian)
+        debian)
             start_debian
             ;;
         drun)
@@ -470,18 +501,14 @@ else
         kill_termux_x11)
             kill_termux_x11
             ;;
+        update)
+            run_initializer
+            ;;
+        help)
+            show_help ""
+            ;;
         *)
-            echo "Unknown command: $1"
-            echo ""
-            echo "Available commands:"
-            echo "  xrun                  - Show interactive menu"
-            echo "  xrun xfce             - Launch native Termux XFCE"
-            echo "  xrun debian_xfce      - Launch Debian XFCE"
-            echo "  xrun debian           - Enter Debian proot CLI"
-            echo "  xrun drun <command>   - Run Debian commands"
-            echo "  xrun dgpu <command>   - Run with hardware acceleration"
-            echo "  xrun dfps <command>   - Run with HW accel + FPS display"
-            echo "  xrun kill_termux_x11  - Kill Termux-X11"
+            show_help "$1"
             exit 1
             ;;
     esac
