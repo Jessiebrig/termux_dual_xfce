@@ -45,6 +45,7 @@ prompt_termux_gpu() {
     echo "  15) VIRGL + All Optimizations (Experimental)"
     echo -n "Choice [0-15]: " > /dev/tty
     read -r gpu_choice < /dev/tty
+    log "prompt_termux_gpu: User entered '$gpu_choice' (length=${#gpu_choice})"
     echo "$gpu_choice"
 }
 
