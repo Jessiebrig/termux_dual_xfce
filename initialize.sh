@@ -24,6 +24,23 @@ echo "│ Termux Dual XFCE Setup Initializer │"
 echo "└────────────────────────────────────┘"
 echo ""
 
+# Check if this is an auto-relaunch from xrun update
+if [[ -n "${XRUN_RELAUNCH:-}" ]]; then
+    echo "Downloading latest xrun from main branch..."
+    SELECTED_BRANCH="main"
+    XRUN_URL="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$SELECTED_BRANCH/xrun"
+    if curl -sL "$XRUN_URL" -o "$PREFIX/bin/xrun" 2>/dev/null; then
+        chmod +x "$PREFIX/bin/xrun"
+        cp "$PREFIX/bin/xrun" "$HOME/xrun" 2>/dev/null && chmod +x "$HOME/xrun" || true
+        echo "✓ xrun updated successfully"
+        echo "Relaunching xrun..."
+        exec xrun
+    else
+        echo "✗ Failed to download xrun"
+        exit 1
+    fi
+fi
+
 # Fetch available branches dynamically
 echo "Fetching available branches..."
 BRANCHES=$(curl -sL "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/branches" | grep '"name":' | cut -d'"' -f4)
@@ -128,12 +145,6 @@ else
 fi
 
 echo ""
-
-# Check if this is an auto-relaunch from xrun update
-if [[ -n "${XRUN_RELAUNCH:-}" ]]; then
-    echo "Updates downloaded. Relaunching xrun..."
-    exec xrun
-fi
 
 # Prompt user to run setup or xrun
 echo "Tip: Setup script skips already installed packages but will run from the start."
