@@ -1,19 +1,14 @@
 #!/bin/bash
 
-#==============================================================================
-# Color Codes
-#==============================================================================
+# Color codes
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-#==============================================================================
-# GPU Configuration Functions - Termux Layer
-#==============================================================================
-
-# Function: Prompt for Termux GPU mode
-prompt_termux_gpu() {
+# Function: Start native Termux XFCE
+start_xfce() {
+    # GPU detection and prompt FIRST
     gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
     echo -e "${GREEN}[Termux XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log
     echo "Select GPU acceleration mode:"
@@ -35,218 +30,6 @@ prompt_termux_gpu() {
     echo "  15) VIRGL + All Optimizations (Experimental)"
     echo -n "Choice [0-15]: " > /dev/tty
     read -r gpu_choice < /dev/tty
-    echo "$gpu_choice"
-}
-
-# Function: Apply Termux GPU configuration
-apply_termux_gpu() {
-    local gpu_choice="$1"
-    local launch_xfce="${2:-true}"  # Default to true for Native Termux XFCE
-    local gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
-    
-    if [[ "$gpu_choice" == "1" ]]; then
-        # ZINK (Vulkan via virpipe)
-        echo -e "${GREEN}[Termux XFCE]${NC} Using ZINK (Vulkan via virpipe)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server --use-egl-surfaceless --use-gles &
-        else
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server_android &
-        fi
-        sleep 2
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "2" ]]; then
-        # VIRGL (OpenGL)
-        echo -e "${GREEN}[Termux XFCE]${NC} Using VIRGL (OpenGL)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android --angle-gl &
-        else
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
-        fi
-        sleep 2
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "3" ]]; then
-        # Native Turnip (Direct Vulkan)
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using Native Turnip (Experimental)" | tee -a ~/xfce_gpu.log
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "4" ]]; then
-        # Native Turnip with optimizations
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using Native Turnip + Optimizations (Experimental)" | tee -a ~/xfce_gpu.log
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "5" ]]; then
-        # Native Turnip with aggressive optimizations
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using Native Turnip + Aggressive Opts (Experimental)" | tee -a ~/xfce_gpu.log
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform,sysmem ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "6" ]]; then
-        # Pure Vulkan mode
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using Pure Vulkan Mode (Experimental)" | tee -a ~/xfce_gpu.log
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink VK_ICD_FILENAMES=/vendor/etc/vulkan/icd.d/qualcomm.adreno.json MESA_VK_WSI_PRESENT_MODE=immediate TU_DEBUG=noconform MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "7" ]]; then
-        # ZINK with alternative threading
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using ZINK Alternative Threading (Experimental)" | tee -a ~/xfce_gpu.log
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform,nolrz ZINK_DEBUG=nir GALLIUM_THREAD=0 MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "8" ]]; then
-        # ZINK + Mesa Threading
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using ZINK + Mesa Threading (Experimental)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy mesa_glthread=true virgl_test_server --use-egl-surfaceless --use-gles &
-        else
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy mesa_glthread=true virgl_test_server_android &
-        fi
-        sleep 2
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe mesa_glthread=true MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "9" ]]; then
-        # VIRGL + Performance Opts
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using VIRGL + Performance Opts (Experimental)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true virgl_test_server_android --angle-gl &
-        else
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true virgl_test_server_android &
-        fi
-        sleep 2
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "10" ]]; then
-        # ZINK + Async Compile
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using ZINK + Async Compile (Experimental)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server --use-egl-surfaceless --use-gles &
-        else
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server_android &
-        fi
-        sleep 2
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_SHADER_CACHE_DISABLE=false MESA_GLSL_CACHE_DISABLE=false allow_glsl_extension_directive_midshader=true MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "11" ]]; then
-        # VIRGL + Async + Threading
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using VIRGL + Async + Threading (Experimental)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true virgl_test_server_android --angle-gl &
-        else
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true virgl_test_server_android &
-        fi
-        sleep 2
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe mesa_glthread=true MESA_SHADER_CACHE_DISABLE=false MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "12" ]]; then
-        # ZINK + Descriptor Caching
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using ZINK + Descriptor Caching (Experimental)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact virgl_test_server --use-egl-surfaceless --use-gles &
-        else
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact virgl_test_server_android &
-        fi
-        sleep 2
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe ZINK_DESCRIPTORS=lazy MESA_SHADER_CACHE_DISABLE=false MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "13" ]]; then
-        # VIRGL + Texture Compression
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using VIRGL + Texture Compression (Experimental)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 force_s3tc_enable=true virgl_test_server_android --angle-gl &
-        else
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 force_s3tc_enable=true virgl_test_server_android &
-        fi
-        sleep 2
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe force_s3tc_enable=true MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "14" ]]; then
-        # ZINK + All Optimizations
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using ZINK + All Optimizations (Experimental)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy mesa_glthread=true virgl_test_server --use-egl-surfaceless --use-gles &
-        else
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy mesa_glthread=true virgl_test_server_android &
-        fi
-        sleep 2
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_SHADER_CACHE_DISABLE=false MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    elif [[ "$gpu_choice" == "15" ]]; then
-        # VIRGL + All Optimizations
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using VIRGL + All Optimizations (Experimental)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true force_s3tc_enable=true virgl_test_server_android --angle-gl &
-        else
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true force_s3tc_enable=true virgl_test_server_android &
-        fi
-        sleep 2
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe mesa_glthread=true force_s3tc_enable=true MESA_SHADER_CACHE_DISABLE=false MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
-        fi
-    else
-        # Software rendering
-        echo -e "${YELLOW}[Termux XFCE]${NC} Software rendering mode" | tee -a ~/xfce_gpu.log
-        if [[ "$launch_xfce" == "true" ]]; then
-            dbus-launch --exit-with-session xfce4-session &
-        fi
-    fi
-}
-
-#==============================================================================
-# GPU Configuration Functions - Proot Layer
-#==============================================================================
-
-# Function: Prompt for Debian proot driver
-prompt_proot_driver() {
-    echo "Select proot driver:"
-    echo "  0) Software rendering (no GPU)"
-    echo "  1) ZINK (Vulkan via virpipe)"
-    echo "  2) VIRGL (OpenGL via virpipe)"
-    echo "  3) Turnip (Native Vulkan - Experimental)"
-    echo -n "Choice [0-3]: " > /dev/tty
-    read -r driver_choice < /dev/tty
-    echo "$driver_choice"
-}
-
-# Function: Apply proot driver and launch XFCE
-apply_proot_driver() {
-    local driver_choice="$1"
-    local username="$2"
-    
-    if [[ "$driver_choice" == "2" ]]; then
-        echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL driver" | tee -a ~/xfce_gpu.log
-        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
-    elif [[ "$driver_choice" == "3" ]]; then
-        echo -e "${YELLOW}[Debian XFCE]${NC} Using Turnip driver (Experimental)" | tee -a ~/xfce_gpu.log
-        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
-    elif [[ "$driver_choice" == "1" ]]; then
-        echo -e "${GREEN}[Debian XFCE]${NC} Using ZINK driver" | tee -a ~/xfce_gpu.log
-        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
-    else
-        echo -e "${YELLOW}[Debian XFCE]${NC} Software rendering mode" | tee -a ~/xfce_gpu.log
-        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
-    fi
-}
-
-#==============================================================================
-# Desktop Environment Launchers
-#==============================================================================
-
-# Function: Start native Termux XFCE
-start_xfce() {
-    # Prompt for GPU choice
-    gpu_choice=$(prompt_termux_gpu)
     
     kill -9 $(pgrep -f "termux.x11") 2>/dev/null
 
@@ -270,8 +53,131 @@ start_xfce() {
     am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
     sleep 1
     
-    # Apply GPU configuration and launch XFCE
-    apply_termux_gpu "$gpu_choice" "true"
+    if [[ "$gpu_choice" == "1" ]]; then
+        # ZINK (Vulkan via virpipe)
+        echo -e "${GREEN}[Termux XFCE]${NC} Using ZINK (Vulkan via virpipe)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server --use-egl-surfaceless --use-gles &
+        else
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server_android &
+        fi
+        sleep 2
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "2" ]]; then
+        # VIRGL (OpenGL)
+        echo -e "${GREEN}[Termux XFCE]${NC} Using VIRGL (OpenGL)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android --angle-gl &
+        else
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
+        fi
+        sleep 2
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "3" ]]; then
+        # Native Turnip (Direct Vulkan)
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using Native Turnip (Experimental)" | tee -a ~/xfce_gpu.log
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "4" ]]; then
+        # Native Turnip with optimizations
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using Native Turnip + Optimizations (Experimental)" | tee -a ~/xfce_gpu.log
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "5" ]]; then
+        # Native Turnip with aggressive optimizations
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using Native Turnip + Aggressive Opts (Experimental)" | tee -a ~/xfce_gpu.log
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform,sysmem ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "6" ]]; then
+        # Pure Vulkan mode
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using Pure Vulkan Mode (Experimental)" | tee -a ~/xfce_gpu.log
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink VK_ICD_FILENAMES=/vendor/etc/vulkan/icd.d/qualcomm.adreno.json MESA_VK_WSI_PRESENT_MODE=immediate TU_DEBUG=noconform MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "7" ]]; then
+        # ZINK with alternative threading
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using ZINK Alternative Threading (Experimental)" | tee -a ~/xfce_gpu.log
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform,nolrz ZINK_DEBUG=nir GALLIUM_THREAD=0 MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "8" ]]; then
+        # ZINK + Mesa Threading
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using ZINK + Mesa Threading (Experimental)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy mesa_glthread=true virgl_test_server --use-egl-surfaceless --use-gles &
+        else
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy mesa_glthread=true virgl_test_server_android &
+        fi
+        sleep 2
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe mesa_glthread=true MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "9" ]]; then
+        # VIRGL + Performance Opts
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using VIRGL + Performance Opts (Experimental)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true virgl_test_server_android --angle-gl &
+        else
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true virgl_test_server_android &
+        fi
+        sleep 2
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "10" ]]; then
+        # ZINK + Async Compile
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using ZINK + Async Compile (Experimental)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server --use-egl-surfaceless --use-gles &
+        else
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server_android &
+        fi
+        sleep 2
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_SHADER_CACHE_DISABLE=false MESA_GLSL_CACHE_DISABLE=false allow_glsl_extension_directive_midshader=true MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "11" ]]; then
+        # VIRGL + Async + Threading
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using VIRGL + Async + Threading (Experimental)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true virgl_test_server_android --angle-gl &
+        else
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true virgl_test_server_android &
+        fi
+        sleep 2
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe mesa_glthread=true MESA_SHADER_CACHE_DISABLE=false MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "12" ]]; then
+        # ZINK + Descriptor Caching
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using ZINK + Descriptor Caching (Experimental)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact virgl_test_server --use-egl-surfaceless --use-gles &
+        else
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact virgl_test_server_android &
+        fi
+        sleep 2
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe ZINK_DESCRIPTORS=lazy MESA_SHADER_CACHE_DISABLE=false MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "13" ]]; then
+        # VIRGL + Texture Compression
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using VIRGL + Texture Compression (Experimental)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 force_s3tc_enable=true virgl_test_server_android --angle-gl &
+        else
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 force_s3tc_enable=true virgl_test_server_android &
+        fi
+        sleep 2
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe force_s3tc_enable=true MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "14" ]]; then
+        # ZINK + All Optimizations
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using ZINK + All Optimizations (Experimental)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy mesa_glthread=true virgl_test_server --use-egl-surfaceless --use-gles &
+        else
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy mesa_glthread=true virgl_test_server_android &
+        fi
+        sleep 2
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_SHADER_CACHE_DISABLE=false MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    elif [[ "$gpu_choice" == "15" ]]; then
+        # VIRGL + All Optimizations
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using VIRGL + All Optimizations (Experimental)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true force_s3tc_enable=true virgl_test_server_android --angle-gl &
+        else
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true force_s3tc_enable=true virgl_test_server_android &
+        fi
+        sleep 2
+        dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe mesa_glthread=true force_s3tc_enable=true MESA_SHADER_CACHE_DISABLE=false MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+    else
+        # Software rendering
+        echo -e "${YELLOW}[Termux XFCE]${NC} Software rendering mode" | tee -a ~/xfce_gpu.log
+        dbus-launch --exit-with-session xfce4-session &
+    fi
     
     # Launch terminal with fastfetch after XFCE starts
     sleep 3
@@ -280,22 +186,25 @@ start_xfce() {
 
 # Function: Start Debian XFCE
 start_debian_xfce() {
-    # Prompt for both GPU choices upfront
-    echo -e "${GREEN}[Debian XFCE]${NC} GPU: $(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)" | tee -a ~/xfce_gpu.log
-    echo ""
-    echo "Step 1: Termux GPU (server)"
-    termux_gpu_choice=$(prompt_termux_gpu)
-    echo ""
-    echo "Step 2: Proot GPU (driver)"
-    proot_driver_choice=$(prompt_proot_driver)
+    # GPU detection and prompt FIRST
+    gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
+    echo -e "${GREEN}[Debian XFCE]${NC} GPU Detected: $gpu_info" | tee -a ~/xfce_gpu.log
     
-    username=$(get_debian_username)
+    # Step 1: Choose Termux graphics server
+    echo "Step 1: Select Termux graphics server:"
+    echo "  0) No GPU acceleration"
+    echo "  1) ZINK server (Vulkan)"
+    echo "  2) VIRGL server (OpenGL)"
+    echo -n "Choice [0/1/2]: " > /dev/tty
+    read -r server_choice < /dev/tty
+    
+    username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
     
     # Start Termux X11 if not already running
     if ! pgrep -f "termux-x11" > /dev/null; then
         kill -9 $(pgrep -f "termux.x11") 2>/dev/null
         
-        # Setup audio
+        # Setup audio (experimental: Samsung-specific fix, may work for other devices)
         if [[ "$(getprop ro.product.manufacturer | tr '[:upper:]' '[:lower:]')" == "samsung" ]]; then
             LD_PRELOAD=/system/lib64/libskcodec.so pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
         else
@@ -313,90 +222,99 @@ start_debian_xfce() {
         sleep 1
     fi
     
-    # Apply Termux GPU configuration (server only, no XFCE launch)
-    apply_termux_gpu "$termux_gpu_choice" "false"
-    
-    # Apply proot driver and launch XFCE
-    apply_proot_driver "$proot_driver_choice" "$username"
-}
-
-#==============================================================================
-# Helper Functions
-#==============================================================================
-
-# Function: Get Debian username
-get_debian_username() {
-    basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*
-}
-
-# Function: Show help message
-show_help() {
-    if [[ -n "$1" ]]; then
-        echo "Unknown command: $1"
+    if [[ "$server_choice" == "1" ]]; then
+        # ZINK server
+        echo -e "${GREEN}[Debian XFCE]${NC} Starting ZINK server (Vulkan)" | tee -a ~/xfce_gpu.log
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server --use-egl-surfaceless --use-gles &
+        sleep 2
+        
+        # Step 2: Choose proot driver
         echo ""
+        echo "Step 2: Select proot driver:"
+        echo "  1) ZINK (Vulkan via virpipe)"
+        echo "  2) VIRGL (OpenGL via virpipe)"
+        echo "  3) Turnip (Native Vulkan - Experimental)"
+        echo -n "Choice [1/2/3]: " > /dev/tty
+        read -r driver_choice < /dev/tty
+        
+        if [[ "$driver_choice" == "2" ]]; then
+            echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL driver" | tee -a ~/xfce_gpu.log
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
+        elif [[ "$driver_choice" == "3" ]]; then
+            echo -e "${YELLOW}[Debian XFCE]${NC} Using Turnip driver (Experimental)" | tee -a ~/xfce_gpu.log
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
+        else
+            echo -e "${GREEN}[Debian XFCE]${NC} Using ZINK driver" | tee -a ~/xfce_gpu.log
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
+        fi
+        
+    elif [[ "$server_choice" == "2" ]]; then
+        # VIRGL server
+        echo -e "${GREEN}[Debian XFCE]${NC} Starting VIRGL server (OpenGL)" | tee -a ~/xfce_gpu.log
+        if echo "$gpu_info" | grep -iq "mali"; then
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android --angle-gl &
+        else
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
+        fi
+        sleep 2
+        
+        # Step 2: Choose proot driver
+        echo ""
+        echo "Step 2: Select proot driver:"
+        echo "  1) ZINK (Vulkan via virpipe)"
+        echo "  2) VIRGL (OpenGL via virpipe)"
+        echo "  3) Turnip (Native Vulkan - Experimental)"
+        echo -n "Choice [1/2/3]: " > /dev/tty
+        read -r driver_choice < /dev/tty
+        
+        if [[ "$driver_choice" == "2" ]]; then
+            echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL driver" | tee -a ~/xfce_gpu.log
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
+        elif [[ "$driver_choice" == "3" ]]; then
+            echo -e "${YELLOW}[Debian XFCE]${NC} Using Turnip driver (Experimental)" | tee -a ~/xfce_gpu.log
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
+        else
+            echo -e "${GREEN}[Debian XFCE]${NC} Using ZINK driver" | tee -a ~/xfce_gpu.log
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
+        fi
+        
+    else
+        # No GPU acceleration
+        echo -e "${YELLOW}[Debian XFCE]${NC} Software rendering mode" | tee -a ~/xfce_gpu.log
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
     fi
-    echo "Available commands:"
-    echo "  xrun                  - Show interactive menu"
-    echo "  xrun xfce             - Launch native Termux XFCE"
-    echo "  xrun debian_xfce      - Launch Debian XFCE"
-    echo "  xrun debian           - Enter Debian proot CLI"
-    echo "  xrun drun <command>   - Run Debian commands"
-    echo "  xrun dgpu <command>   - Run with hardware acceleration"
-    echo "  xrun dfps <command>   - Run with HW accel + FPS display"
-    echo "  xrun kill_termux_x11  - Kill Termux-X11"
-    echo "  xrun update           - Run initializer to update scripts"
-    echo "  xrun help             - Show this help message"
 }
-
-#==============================================================================
-# Debian Proot Utilities
-#==============================================================================
 
 # Function: Enter Debian proot CLI
 start_debian() {
-    username=$(get_debian_username)
+    username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
     export DISPLAY=:0
     proot-distro login debian --user $username --shared-tmp
 }
 
 # Function: Run Debian commands
 drun() {
-    username=$(get_debian_username)
+    username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
     proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 "$@"
 }
 
 # Function: Run with hardware acceleration
 dgpu() {
-    username=$(get_debian_username)
+    username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
     proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform "$@"
 }
 
 # Function: Run with hardware acceleration + FPS display
 dfps() {
-    username=$(get_debian_username)
+    username=$(basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*)
     proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform GALLIUM_HUD=fps "$@"
 }
-
-#==============================================================================
-# System Utilities
-#==============================================================================
 
 # Function: Kill Termux-X11
 kill_termux_x11() {
     am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 >/dev/null 2>&1
     pkill -f termux
 }
-
-# Function: Run initializer to update scripts
-run_initializer() {
-    echo ""
-    echo -e "${GREEN}Launching initializer (downloads latest xrun and setup script)...${NC}"
-    curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o initialize.sh && bash initialize.sh
-}
-
-#==============================================================================
-# Interactive Menu
-#==============================================================================
 
 # Function: Show interactive menu
 show_menu() {
@@ -428,8 +346,8 @@ show_menu() {
         echo "      Stop all X11 sessions"
         echo ""
         echo -e "${CYAN}Setup:${NC}"
-        echo -e "  ${GREEN}9${NC} - Check for Updates"
-        echo "      Download xrun and main script from your selected branch"
+        echo -e "  ${GREEN}9${NC} - Run Initializer"
+        echo "      Download and run initialize script"
         echo ""
         echo -e "  ${YELLOW}0${NC} - Exit"
         echo ""
@@ -484,10 +402,14 @@ show_menu() {
                 read < /dev/tty
                 ;;
             9)
-                run_initializer
+                echo ""
+                echo -e "${GREEN}Running initializer...${NC}"
+                curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh | bash
                 exit 0
                 ;;
             0)
+                echo ""
+                echo "Goodbye!"
                 exit 0
                 ;;
             *)
@@ -499,10 +421,6 @@ show_menu() {
     done
 }
 
-#==============================================================================
-# Main Entry Point
-#==============================================================================
-
 # Main logic
 if [[ $# -eq 0 ]]; then
     # No arguments - show interactive menu
@@ -510,13 +428,13 @@ if [[ $# -eq 0 ]]; then
 else
     # Arguments provided - run the function
     case "$1" in
-        xfce)
+        start_xfce|xfce)
             start_xfce
             ;;
-        debian_xfce)
+        start_debian_xfce|debian_xfce)
             start_debian_xfce
             ;;
-        debian)
+        start_debian|debian)
             start_debian
             ;;
         drun)
@@ -534,14 +452,18 @@ else
         kill_termux_x11)
             kill_termux_x11
             ;;
-        update)
-            run_initializer
-            ;;
-        help)
-            show_help ""
-            ;;
         *)
-            show_help "$1"
+            echo "Unknown command: $1"
+            echo ""
+            echo "Available commands:"
+            echo "  xrun                  - Show interactive menu"
+            echo "  xrun xfce             - Launch native Termux XFCE"
+            echo "  xrun debian_xfce      - Launch Debian XFCE"
+            echo "  xrun debian           - Enter Debian proot CLI"
+            echo "  xrun drun <command>   - Run Debian commands"
+            echo "  xrun dgpu <command>   - Run with hardware acceleration"
+            echo "  xrun dfps <command>   - Run with HW accel + FPS display"
+            echo "  xrun kill_termux_x11  - Kill Termux-X11"
             exit 1
             ;;
     esac
