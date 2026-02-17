@@ -129,6 +129,12 @@ fi
 
 echo ""
 
+# Check if this is an auto-relaunch from xrun update
+if [[ -n "${XRUN_RELAUNCH:-}" ]]; then
+    echo "Updates downloaded. Relaunching xrun..."
+    exec xrun
+fi
+
 # Prompt user to run setup or xrun
 echo "Tip: Setup script skips already installed packages but will run from the start."
 echo -n "Run setup? (y/N): " > /dev/tty
@@ -138,9 +144,6 @@ if [[ "$response" =~ ^[Yy]$ ]]; then
     exec < /dev/tty
     export INSTALLER_BRANCH="$SELECTED_BRANCH"
     bash "$SCRIPT_NAME"
-elif [[ -n "${XRUN_RELAUNCH:-}" ]]; then
-    echo "Updates downloaded. Relaunching xrun..."
-    exec xrun
 else
     echo "Setup skipped. Running xrun..."
     xrun
