@@ -1,7 +1,7 @@
 # Termux XFCE Desktop Setup
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v1.1.0-blue.svg)](https://github.com/Jessiebrig/termux_dual_xfce/releases/tag/v1.1.0)
+[![Version](https://img.shields.io/badge/version-v1.2.0-blue.svg)](https://github.com/Jessiebrig/termux_dual_xfce/releases/tag/v1.2.0)
 
 A lightweight script to set up native XFCE desktop environment and Debian proot with XFCE in Termux. Optimized for speed and efficiency with a streamlined installation process.
 
