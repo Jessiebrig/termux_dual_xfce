@@ -461,7 +461,7 @@ run_initializer() {
     log "run_initializer: Launching initializer script"
     echo ""
     echo -e "${GREEN}Launching initializer (downloads latest xrun and setup script)...${NC}"
-    curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o initialize.sh && bash initialize.sh
+    curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o ~/initialize.sh && exec bash ~/initialize.sh
 }
 
 #==============================================================================
