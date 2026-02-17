@@ -54,7 +54,8 @@ apply_termux_gpu() {
     local launch_xfce="${2:-true}"  # Default to true for Native Termux XFCE
     local gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
     
-    log "apply_termux_gpu: gpu_choice=$gpu_choice, launch_xfce=$launch_xfce"
+    log "apply_termux_gpu: gpu_choice='$gpu_choice', launch_xfce='$launch_xfce'"
+    log "apply_termux_gpu: Testing gpu_choice value (length=${#gpu_choice})"
     
     if [[ "$gpu_choice" == "1" ]]; then
         # ZINK (Vulkan via virpipe)
@@ -221,6 +222,7 @@ apply_termux_gpu() {
         fi
     else
         # Software rendering
+        log "apply_termux_gpu: No match found for gpu_choice='$gpu_choice' - using software rendering"
         echo -e "${YELLOW}[Termux XFCE]${NC} Software rendering mode" | tee -a ~/xfce_gpu.log
         if [[ "$launch_xfce" == "true" ]]; then
             log "Launching XFCE in software rendering mode"
