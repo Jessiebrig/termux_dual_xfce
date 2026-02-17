@@ -33,7 +33,9 @@ fi
 
 # Function: Prompt for Termux GPU mode
 prompt_termux_gpu() {
-    gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
+    local egl=$(getprop ro.hardware.egl)
+    local vulkan=$(getprop ro.hardware.vulkan)
+    local gpu_info="${egl}${vulkan:+ / $vulkan}"
     echo -e "${GREEN}[Termux XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log > /dev/tty
     echo "Select GPU acceleration mode:" > /dev/tty
     echo "  0) No acceleration (software rendering)" > /dev/tty
@@ -55,6 +57,7 @@ prompt_termux_gpu() {
     echo -n "Choice [0-15]: " > /dev/tty
     read -r gpu_choice < /dev/tty
     gpu_choice=$(echo "$gpu_choice" | tr -cd '0-9')
+    [[ -z "$gpu_choice" ]] && gpu_choice="0"
     echo "$gpu_choice"
 }
 
@@ -239,14 +242,19 @@ apply_termux_gpu() {
             dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe mesa_glthread=true force_s3tc_enable=true MESA_SHADER_CACHE_DISABLE=false MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
         fi
     else
-        # Invalid choice - fallback to software rendering
-        log "apply_termux_gpu: Invalid gpu_choice='$gpu_choice' - falling back to software rendering"
-        echo -e "${YELLOW}[Termux XFCE]${NC} Invalid choice, using software rendering" | tee -a ~/xfce_gpu.log
+        # Out of range or invalid - fallback to software rendering
+        if [[ "$gpu_choice" =~ ^[0-9]+$ ]] && [[ "$gpu_choice" -gt 15 ]]; then
+            log "apply_termux_gpu: Out of range gpu_choice='$gpu_choice' - using software rendering"
+            echo -e "${YELLOW}[Termux XFCE]${NC} Choice out of range, using software rendering" | tee -a ~/xfce_gpu.log
+        else
+            log "apply_termux_gpu: Invalid gpu_choice='$gpu_choice' - using software rendering"
+            echo -e "${YELLOW}[Termux XFCE]${NC} Invalid choice, using software rendering" | tee -a ~/xfce_gpu.log
+        fi
         if [[ "$launch_xfce" == "true" ]]; then
-            log "Launching XFCE in software rendering mode (fallback)"
+            log "Launching XFCE in software rendering mode"
             dbus-launch --exit-with-session xfce4-session &
         else
-            log "Software rendering fallback: Skipping XFCE launch"
+            log "Software rendering: Skipping XFCE launch"
         fi
     fi
 }
@@ -264,6 +272,7 @@ prompt_proot_driver() {
     echo "  3) Turnip (Native Vulkan - Experimental)" > /dev/tty
     echo -n "Choice [0-3]: " > /dev/tty
     read -r driver_choice < /dev/tty
+    [[ -z "$driver_choice" ]] && driver_choice="0"
     echo "$driver_choice"
 }
 
