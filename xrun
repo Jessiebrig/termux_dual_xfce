@@ -56,6 +56,7 @@ apply_termux_gpu() {
     local launch_xfce="${2:-true}"  # Default to true for Native Termux XFCE
     local gpu_info="$(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)"
     
+    echo "[DEBUG] apply_termux_gpu received: gpu_choice='$gpu_choice' (length=${#gpu_choice}), launch_xfce='$launch_xfce'"
     log "apply_termux_gpu: gpu_choice='$gpu_choice', launch_xfce='$launch_xfce'"
     log "apply_termux_gpu: Testing gpu_choice value (length=${#gpu_choice})"
     
