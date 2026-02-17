@@ -482,18 +482,27 @@ kill_termux_x11() {
 
 # Function: Run initializer to update scripts
 run_initializer() {
-    log "run_initializer: Launching initializer script"
-    local tmp="${TMPDIR:-/tmp}/init_$$.sh"
+    log "run_initializer: Updating xrun"
+    local new_xrun="${TMPDIR:-/tmp}/xrun_new_$$.sh"
     echo ""
-    echo -e "${GREEN}Downloading latest initializer script...${NC}"
+    echo -e "${GREEN}Downloading latest xrun from main branch...${NC}"
     
-    if curl -L https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o "$tmp"; then
-        echo -e "${GREEN}Download successful! Launching initializer...${NC}"
-        chmod +x "$tmp"
-        export XRUN_RELAUNCH=1
-        exec bash "$tmp"
+    if curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/xrun -o "$new_xrun"; then
+        echo -e "${GREEN}Download successful! Updating xrun...${NC}"
+        chmod +x "$new_xrun"
+        
+        # Update both locations
+        cp "$new_xrun" "$PREFIX/bin/xrun" 2>/dev/null || true
+        cp "$new_xrun" "$HOME/xrun" 2>/dev/null || true
+        chmod +x "$PREFIX/bin/xrun" "$HOME/xrun" 2>/dev/null || true
+        
+        echo -e "${GREEN}✓ xrun updated successfully${NC}"
+        echo "Relaunching xrun..."
+        
+        # Replace current process with new xrun
+        exec "$new_xrun"
     else
-        echo -e "${YELLOW}Failed to download initializer script.${NC}"
+        echo -e "${YELLOW}Failed to download xrun.${NC}"
         echo "Please check your internet connection and try again."
         echo ""
         echo -n "Press Enter to continue..." > /dev/tty
