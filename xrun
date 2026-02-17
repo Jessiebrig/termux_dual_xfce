@@ -21,13 +21,10 @@ log() {
 }
 
 # Display script info
-if [[ -f "${BASH_SOURCE[0]}" ]]; then
-    XRUN_DATE=$(ls -l "${BASH_SOURCE[0]}" 2>/dev/null | awk '{print $6, $7, $8}' || stat -c %y "${BASH_SOURCE[0]}" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "${BASH_SOURCE[0]}" 2>/dev/null || date -r "${BASH_SOURCE[0]}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "Unknown")
-    echo "xrun | File date: ${XRUN_DATE}"
-    echo ""
-elif [[ -f "xrun" ]]; then
-    XRUN_DATE=$(ls -l "xrun" 2>/dev/null | awk '{print $6, $7, $8}' || stat -c %y "xrun" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "xrun" 2>/dev/null || date -r "xrun" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "Unknown")
-    echo "xrun | File date: ${XRUN_DATE}"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+if [[ -f "$SCRIPT_PATH" ]]; then
+    XRUN_DATE=$(ls -l "$SCRIPT_PATH" 2>/dev/null | awk '{print $6, $7, $8}' || stat -c %y "$SCRIPT_PATH" 2>/dev/null | cut -d' ' -f1,2 | cut -d'.' -f1 || stat -f "%Sm" -t "%b %d %H:%M" "$SCRIPT_PATH" 2>/dev/null || date -r "$SCRIPT_PATH" '+%b %d %H:%M' 2>/dev/null || echo "Unknown")
+    echo "File date: ${XRUN_DATE}"
     echo ""
 fi
 
@@ -403,6 +400,17 @@ get_debian_username() {
     basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*
 }
 
+# Function: Get file date
+get_file_date() {
+    if [[ -f "${BASH_SOURCE[0]}" ]]; then
+        ls -l "${BASH_SOURCE[0]}" 2>/dev/null | awk '{print $6, $7, $8}' || stat -c %y "${BASH_SOURCE[0]}" 2>/dev/null | cut -d' ' -f1,2 | cut -d'.' -f1 || stat -f "%Sm" -t "%b %d %H:%M" "${BASH_SOURCE[0]}" 2>/dev/null || date -r "${BASH_SOURCE[0]}" '+%b %d %H:%M' 2>/dev/null || echo "Unknown"
+    elif [[ -f "xrun" ]]; then
+        ls -l "xrun" 2>/dev/null | awk '{print $6, $7, $8}' || stat -c %y "xrun" 2>/dev/null | cut -d' ' -f1,2 | cut -d'.' -f1 || stat -f "%Sm" -t "%b %d %H:%M" "xrun" 2>/dev/null || date -r "xrun" '+%b %d %H:%M' 2>/dev/null || echo "Unknown"
+    else
+        echo "Unknown"
+    fi
+}
+
 # Function: Show help message
 show_help() {
     if [[ -n "$1" ]]; then
@@ -480,6 +488,7 @@ run_initializer() {
 show_menu() {
     while true; do
         clear
+        echo "File date: $(get_file_date)"
         echo ""
         echo "┌────────────────────────────────────────┐"
         echo "│       Termux XFCE Quick Launch         │"
