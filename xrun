@@ -60,7 +60,16 @@ apply_termux_gpu() {
     log "apply_termux_gpu: gpu_choice='$gpu_choice', launch_xfce='$launch_xfce'"
     log "apply_termux_gpu: Testing gpu_choice value (length=${#gpu_choice})"
     
-    if [[ "$gpu_choice" == "1" ]]; then
+    if [[ "$gpu_choice" == "0" ]]; then
+        # Software rendering (No acceleration)
+        echo -e "${YELLOW}[Termux XFCE]${NC} Software rendering mode (No acceleration)" | tee -a ~/xfce_gpu.log
+        if [[ "$launch_xfce" == "true" ]]; then
+            log "Launching XFCE in software rendering mode"
+            dbus-launch --exit-with-session xfce4-session &
+        else
+            log "Software rendering: Skipping XFCE launch"
+        fi
+    elif [[ "$gpu_choice" == "1" ]]; then
         # ZINK (Vulkan via virpipe)
         echo -e "${GREEN}[Termux XFCE]${NC} Using ZINK (Vulkan via virpipe)" | tee -a ~/xfce_gpu.log
         if echo "$gpu_info" | grep -iq "mali"; then
@@ -224,14 +233,14 @@ apply_termux_gpu() {
             dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe mesa_glthread=true force_s3tc_enable=true MESA_SHADER_CACHE_DISABLE=false MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
         fi
     else
-        # Software rendering
-        log "apply_termux_gpu: No match found for gpu_choice='$gpu_choice' - using software rendering"
-        echo -e "${YELLOW}[Termux XFCE]${NC} Software rendering mode" | tee -a ~/xfce_gpu.log
+        # Invalid choice - fallback to software rendering
+        log "apply_termux_gpu: Invalid gpu_choice='$gpu_choice' - falling back to software rendering"
+        echo -e "${YELLOW}[Termux XFCE]${NC} Invalid choice, using software rendering" | tee -a ~/xfce_gpu.log
         if [[ "$launch_xfce" == "true" ]]; then
-            log "Launching XFCE in software rendering mode"
+            log "Launching XFCE in software rendering mode (fallback)"
             dbus-launch --exit-with-session xfce4-session &
         else
-            log "Software rendering: Skipping XFCE launch"
+            log "Software rendering fallback: Skipping XFCE launch"
         fi
     fi
 }
