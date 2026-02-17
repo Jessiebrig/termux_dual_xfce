@@ -594,7 +594,6 @@ show_menu() {
                 ;;
             9)
                 run_initializer
-                exit 0
                 ;;
             0)
                 exit 0
