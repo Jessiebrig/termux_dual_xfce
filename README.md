@@ -18,8 +18,6 @@ A lightweight script to set up native XFCE desktop environment and Debian proot 
 
 - **Operating System**: Android 7.0+ (Nougat or higher)
 - **Architecture**: ARM64/aarch64 recommended (32-bit ARM supported but not recommended due to performance limitations)
-- **Termux**: Must be from [GitHub](https://github.com/termux/termux-app/releases) or F-Droid (NOT Play Store)
-- **Termux-X11**: Required from [GitHub releases](https://github.com/termux/termux-x11/releases)
 - **Storage**: 8GB+ free space recommended
 - **RAM**: 3GB+ recommended
 
@@ -29,26 +27,22 @@ A lightweight script to set up native XFCE desktop environment and Debian proot 
 
 Download and install both apps on your Android device:
 
-1. **Termux** - [Download from GitHub](https://github.com/termux/termux-app/releases/latest) or [F-Droid](https://f-droid.org/packages/com.termux/)
-2. **Termux-X11** - [Download from GitHub](https://github.com/termux/termux-x11/releases/latest)
+1. **Termux** - [Download from GitHub](https://github.com/termux/termux-app/releases/latest) or [F-Droid](https://f-droid.org/packages/com.termux/) (use arm64-v8a or universal APK)
+2. **Termux-X11** - [Download from GitHub](https://github.com/termux/termux-x11/releases/latest) (use arm64-v8a or universal APK)
 
-⚠️ **Important**: Use Termux from GitHub or F-Droid for full functionality.
+⚠️ **Important**: 
+- Use Termux from GitHub or F-Droid (NOT Play Store) for full functionality
+- Download APK matching your device architecture, or use universal APK if unsure
 
 ### Step 2: Run Installation
 
 Once both Termux and Termux-X11 are installed, open Termux and copy-paste this command, then follow the installation prompts:
 
 ```bash
-curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh | bash
+curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o initialize.sh && bash initialize.sh
 ```
 
-The launcher fetches available branches and lets you choose which version to install (stable or experimental).
-
-**Alternative**: Direct installation from main branch (stable):
-
-```bash
-curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/refs/heads/main/termux-xfce-dual-setup.sh -o termux-xfce-dual-setup.sh && bash termux-xfce-dual-setup.sh
-```
+This will fetch available branches and let you choose which version to install (stable or experimental).
 
 ## Installation Details
 
@@ -65,13 +59,13 @@ Installation logs are saved to `~/xfce_install.log` for troubleshooting.
 - Firefox browser
 - Starship prompt, Fastfetch, eza, bat, htop
 - Papirus icon theme
-- Hardware acceleration (virglrenderer, optional Vulkan)
+- Hardware acceleration (ZINK, VIRGL, Turnip)
 
 ### Debian Proot Environment
 - XFCE4 desktop with goodies
 - Conky system monitor
 - Starship prompt, eza, bat, fastfetch, htop
-- Hardware acceleration (mesa-vulkan-kgsl/Turnip)
+- Hardware acceleration (ZINK, VIRGL, Turnip)
 - Sudo configured for passwordless access
 
 ## Starting the Desktop
@@ -131,6 +125,7 @@ Starts full Debian XFCE desktop in proot environment.
 
 ### System Tools
 - `xrun kill_termux_x11` - Stop all Termux-X11 sessions
+- `xrun` (option 9) - Re-run initializer to switch branches or reinstall
 - `~/xfce_gpu.log` - View GPU acceleration status logs for both environments
 
 ## 🙏 Credits & Acknowledgments
