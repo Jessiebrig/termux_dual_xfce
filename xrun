@@ -21,12 +21,12 @@ log() {
 }
 
 # Display script info
-if [[ -f "$PREFIX/bin/xrun" ]]; then
-    XRUN_DATE=$(ls -l "$PREFIX/bin/xrun" 2>/dev/null | awk '{print $6, $7, $8}' || stat -c %y "$PREFIX/bin/xrun" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$PREFIX/bin/xrun" 2>/dev/null || date -r "$PREFIX/bin/xrun" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "Unknown")
+if [[ -f "${BASH_SOURCE[0]}" ]]; then
+    XRUN_DATE=$(ls -l "${BASH_SOURCE[0]}" 2>/dev/null | awk '{print $6, $7, $8}' || stat -c %y "${BASH_SOURCE[0]}" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "${BASH_SOURCE[0]}" 2>/dev/null || date -r "${BASH_SOURCE[0]}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "Unknown")
     echo "xrun | File date: ${XRUN_DATE}"
     echo ""
-elif [[ -f "${BASH_SOURCE[0]}" ]]; then
-    XRUN_DATE=$(ls -l "${BASH_SOURCE[0]}" 2>/dev/null | awk '{print $6, $7, $8}' || stat -c %y "${BASH_SOURCE[0]}" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "${BASH_SOURCE[0]}" 2>/dev/null || date -r "${BASH_SOURCE[0]}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "Unknown")
+elif [[ -f "xrun" ]]; then
+    XRUN_DATE=$(ls -l "xrun" 2>/dev/null | awk '{print $6, $7, $8}' || stat -c %y "xrun" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "xrun" 2>/dev/null || date -r "xrun" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "Unknown")
     echo "xrun | File date: ${XRUN_DATE}"
     echo ""
 fi
