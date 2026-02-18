@@ -404,27 +404,6 @@ start_debian_xfce() {
             echo -e "${YELLOW}⚠ Unknown GPU → Using VIRGL Basic (Option 5)${NC}" | tee -a ~/xfce_gpu.log
             log "Proot auto-detect: Unknown GPU, using VIRGL Basic (5)"
         fi
-    elif [[ "$termux_gpu_choice" == "2" || "$termux_gpu_choice" == "3" || "$termux_gpu_choice" == "4" ]]; then
-        # Termux Turnip selected - Turnip doesn't work in proot, use VIRGL to connect
-        echo ""
-        echo -e "${CYAN}Step 2: Proot GPU (driver) - Auto-selected${NC}"
-        proot_driver_choice="6"  # VIRGL Optimized
-        echo -e "${GREEN}✓ Termux using Turnip (direct GPU) → Proot using VIRGL Optimized to connect (Option 6)${NC}" | tee -a ~/xfce_gpu.log
-        log "Proot auto-match: Termux Turnip (direct), proot using VIRGL Optimized (6)"
-    elif [[ "$termux_gpu_choice" == "5" || "$termux_gpu_choice" == "6" ]]; then
-        # Termux VIRGL selected, auto-select VIRGL Optimized for proot
-        echo ""
-        echo -e "${CYAN}Step 2: Proot GPU (driver) - Auto-selected${NC}"
-        proot_driver_choice="6"  # VIRGL Optimized
-        echo -e "${GREEN}✓ Termux using VIRGL → Proot using VIRGL Optimized (Option 6)${NC}" | tee -a ~/xfce_gpu.log
-        log "Proot auto-match: Termux VIRGL, using VIRGL Optimized (6)"
-    elif [[ "$termux_gpu_choice" == "7" || "$termux_gpu_choice" == "8" ]]; then
-        # Termux ZINK selected, auto-select ZINK Optimized for proot
-        echo ""
-        echo -e "${CYAN}Step 2: Proot GPU (driver) - Auto-selected${NC}"
-        proot_driver_choice="8"  # ZINK Optimized
-        echo -e "${GREEN}✓ Termux using ZINK → Proot using ZINK Optimized (Option 8)${NC}" | tee -a ~/xfce_gpu.log
-        log "Proot auto-match: Termux ZINK, using ZINK Optimized (8)"
     elif [[ "$termux_gpu_choice" == "0" ]]; then
         # Software rendering
         echo ""
@@ -433,7 +412,7 @@ start_debian_xfce() {
         echo -e "${YELLOW}✓ Termux software rendering → Proot software rendering${NC}" | tee -a ~/xfce_gpu.log
         log "Proot auto-match: Software rendering (0)"
     else
-        # Custom or unknown, prompt user
+        # Manual selection (2-9), show prompt
         echo ""
         echo "Step 2: Proot GPU (driver)"
         proot_driver_choice=$(prompt_proot_driver)
