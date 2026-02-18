@@ -409,8 +409,8 @@ main() {
     xfconf-query -c xfce4-session -p /startup/compat/LaunchGNOME -n -t bool -s false 2>&1 | tee -a "$LOG_FILE" || msg warn "xfconf-query LaunchGNOME failed (non-critical)"
     xfconf-query -c xfce4-session -p /general/FailsafeSessionName -n -t string -s "Failsafe" 2>&1 | tee -a "$LOG_FILE" || msg warn "xfconf-query FailsafeSessionName failed (non-critical)"
     
-    # Auto-start terminal with fastfetch on native Termux XFCE startup
-    create_autostart "$HOME/.config/autostart" "Terminal" "xfce4-terminal -e 'bash -c \"fastfetch; exec bash\"'"
+    # Auto-start terminal on native Termux XFCE startup
+    create_autostart "$HOME/.config/autostart" "Terminal" "xfce4-terminal"
     
     # Setup aliases
     msg info "Configuring shell aliases..."
@@ -422,6 +422,7 @@ alias start_debian='xrun debian'
 alias ls='eza -lF --icons'
 alias cat='bat'
 eval "\$(starship init bash)"
+fastfetch
 EOF
     else
         msg ok "Aliases already configured, skipping..."
@@ -477,8 +478,8 @@ EOF
         msg ok "Sudo already configured for $username, skipping..."
     fi
     
-    # Auto-start terminal with fastfetch and conky on Debian XFCE startup
-    create_autostart "$DEBIAN_ROOT/home/$username/.config/autostart" "Terminal" "xfce4-terminal -e 'bash -c \"fastfetch; exec bash\"'"
+    # Auto-start terminal and conky on Debian XFCE startup
+    create_autostart "$DEBIAN_ROOT/home/$username/.config/autostart" "Terminal" "xfce4-terminal"
     create_autostart "$DEBIAN_ROOT/home/$username/.config/autostart" "Conky" "conky"
     
     # Download conky config for Debian
