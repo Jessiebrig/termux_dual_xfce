@@ -374,7 +374,7 @@ main() {
     msg info "Installing native Termux XFCE desktop..."
     for pkg_name in xfce4 xfce4-goodies termux-x11-nightly \
         virglrenderer-android mesa-zink virglrenderer-mesa-zink \
-        firefox starship fastfetch papirus-icon-theme eza bat htop glmark2
+        firefox chromium starship fastfetch papirus-icon-theme eza bat htop glmark2
     do
         if ! install_pkg "$pkg_name"; then
             msg error "Failed to install $pkg_name"
@@ -419,7 +419,6 @@ alias start_debian='xrun debian'
 alias ls='eza -lF --icons'
 alias cat='bat'
 eval "\$(starship init bash)"
-fastfetch
 EOF
     else
         msg ok "Aliases already configured, skipping..."
@@ -442,7 +441,7 @@ EOF
     proot-distro login debian --shared-tmp -- apt upgrade -y
     
     msg info "Installing Debian packages..."
-    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 htop glmark2
+    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 chromium htop glmark2
     do
         if ! install_deb_pkg "$deb_pkg"; then
             msg error "Failed to install Debian package: $deb_pkg"
