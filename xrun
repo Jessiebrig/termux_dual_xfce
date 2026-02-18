@@ -32,7 +32,11 @@ fi
 prompt_termux_gpu() {
     local egl=$(getprop ro.hardware.egl)
     local vulkan=$(getprop ro.hardware.vulkan)
-    local gpu_info="${egl}${vulkan:+ / $vulkan}"
+    if [[ "$egl" == "$vulkan" ]]; then
+        local gpu_info="$egl"
+    else
+        local gpu_info="$egl / $vulkan"
+    fi
     echo -e "${GREEN}[Termux XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log > /dev/tty
     echo "" > /dev/tty
     echo "Select GPU acceleration mode:" > /dev/tty
@@ -40,15 +44,15 @@ prompt_termux_gpu() {
     echo "  1) Auto-detect (recommended)" > /dev/tty
     echo "" > /dev/tty
     echo "  --- Direct GPU (Adreno 6XX/7XX only) ---" > /dev/tty
-    echo "  2) Turnip Basic" > /dev/tty
-    echo "  3) Turnip Optimized" > /dev/tty
-    echo "  4) Turnip Aggressive" > /dev/tty
+    echo "  2) Turnip Basic (direct Vulkan)" > /dev/tty
+    echo "  3) Turnip Optimized (+ threading, descriptor caching)" > /dev/tty
+    echo "  4) Turnip Aggressive (experimental, best for gaming)" > /dev/tty
     echo "" > /dev/tty
     echo "  --- Universal (works on all GPUs) ---" > /dev/tty
-    echo "  5) VIRGL Basic" > /dev/tty
-    echo "  6) VIRGL Optimized" > /dev/tty
-    echo "  7) ZINK Basic" > /dev/tty
-    echo "  8) ZINK Optimized" > /dev/tty
+    echo "  5) VIRGL Basic (OpenGL via server, safe)" > /dev/tty
+    echo "  6) VIRGL Optimized (+ threading, Mali recommended)" > /dev/tty
+    echo "  7) ZINK Basic (Vulkan via server)" > /dev/tty
+    echo "  8) ZINK Optimized (+ threading, descriptor caching)" > /dev/tty
     echo "" > /dev/tty
     echo "  --- Advanced ---" > /dev/tty
     echo "  9) Custom (enter your own commands)" > /dev/tty
