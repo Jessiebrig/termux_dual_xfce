@@ -56,8 +56,9 @@ prompt_termux_gpu() {
     echo "" > /dev/tty
     echo "  --- Advanced ---" > /dev/tty
     echo "  9) Custom (enter your own commands)" > /dev/tty
+    echo "  10) Test Mode (auto-setup: ZINK server + VIRGL proot)" > /dev/tty
     echo "" > /dev/tty
-    echo -n "Choice [0-9]: " > /dev/tty
+    echo -n "Choice [0-10]: " > /dev/tty
     read -r gpu_choice < /dev/tty
     gpu_choice=$(echo "$gpu_choice" | tr -cd '0-9')
     [[ -z "$gpu_choice" ]] && gpu_choice="0"
@@ -228,6 +229,17 @@ apply_termux_gpu() {
             else
                 dbus-launch --exit-with-session xfce4-session &
             fi
+        fi
+    elif [[ "$gpu_choice" == "10" ]]; then
+        echo -e "${CYAN}[Termux XFCE]${NC} Test Mode (ZINK server for proot testing)" | tee -a ~/xfce_gpu.log
+        log "Test Mode: Starting ZINK EGL server for proot"
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server --use-egl-surfaceless --use-gles &
+        sleep 2
+        if [[ "$launch_xfce" == "true" ]]; then
+            log "Test Mode: Launching XFCE session with VIRGL"
+            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+        else
+            log "Test Mode: Server-only mode for proot"
         fi
     else
         echo -e "${YELLOW}[Termux XFCE]${NC} Invalid choice, using software rendering" | tee -a ~/xfce_gpu.log
@@ -411,6 +423,13 @@ start_debian_xfce() {
         proot_driver_choice="0"  # Software
         echo -e "${YELLOW}✓ Termux software rendering → Proot software rendering${NC}" | tee -a ~/xfce_gpu.log
         log "Proot auto-match: Software rendering (0)"
+    elif [[ "$termux_gpu_choice" == "10" ]]; then
+        # Test Mode - auto-select VIRGL Basic for proot
+        echo ""
+        echo -e "${CYAN}Step 2: Proot GPU (driver) - Auto-selected${NC}"
+        proot_driver_choice="5"  # VIRGL Basic
+        echo -e "${GREEN}✓ Test Mode → Proot using VIRGL Basic (Option 5)${NC}" | tee -a ~/xfce_gpu.log
+        log "Proot auto-match: Test Mode, using VIRGL Basic (5)"
     else
         # Manual selection (2-9), show prompt
         echo ""
