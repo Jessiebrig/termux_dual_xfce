@@ -1,13 +1,14 @@
 # Termux XFCE Desktop Setup
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v1.2.0-blue.svg)](https://github.com/Jessiebrig/termux_dual_xfce/releases/tag/v1.2.0)
+[![Version](https://img.shields.io/badge/version-v1.2.1-blue.svg)](https://github.com/Jessiebrig/termux_dual_xfce/releases/tag/v1.2.1)
 
 A lightweight script to set up native XFCE desktop environment and Debian proot with XFCE in Termux. Optimized for speed and efficiency with a streamlined installation process.
 
 ## Key Features
 - **Dual Desktop Environment**: Native Termux XFCE + Debian proot XFCE
-- **Hardware Acceleration**: GPU support with auto-detection (Adreno/Mali), Vulkan drivers, and real-time status logging
+- **Smart GPU Acceleration**: Auto-detect mode + 10 optimized options for Adreno, Mali, and universal GPUs
+- **Hardware Acceleration**: Turnip (Adreno 6XX/7XX), VIRGL, and ZINK drivers with real-time status logging
 - **Dynamic Branch Selection**: Choose stable or experimental versions for testing new features
 - **Fast Installation**: Streamlined setup with essential packages only
 - **Modern CLI Tools**: Starship prompt, Fastfetch (auto-displays on startup), eza, bat
