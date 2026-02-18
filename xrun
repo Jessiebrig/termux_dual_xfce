@@ -58,7 +58,14 @@ prompt_termux_gpu() {
     echo "  9) Custom (enter your own commands)" > /dev/tty
     echo "  10) Test Mode (auto-setup: ZINK server + VIRGL proot)" > /dev/tty
     echo "" > /dev/tty
-    echo -n "Choice [0-10]: " > /dev/tty
+    echo "  --- Experimental Test Modes ---" > /dev/tty
+    echo "  11) VIRGL Android + VIRGL Optimized" > /dev/tty
+    echo "  12) ZINK Android + ZINK Optimized" > /dev/tty
+    echo "  13) VIRGL ANGLE + VIRGL Basic (Mali)" > /dev/tty
+    echo "  14) ZINK EGL Max + VIRGL Optimized" > /dev/tty
+    echo "  15) VIRGL Android Opt + ZINK Basic" > /dev/tty
+    echo "" > /dev/tty
+    echo -n "Choice [0-15]: " > /dev/tty
     read -r gpu_choice < /dev/tty
     gpu_choice=$(echo "$gpu_choice" | tr -cd '0-9')
     [[ -z "$gpu_choice" ]] && gpu_choice="0"
@@ -241,6 +248,36 @@ apply_termux_gpu() {
         else
             log "Test Mode: Server-only mode for proot"
         fi
+    elif [[ "$gpu_choice" == "11" ]]; then
+        echo -e "${CYAN}[Test 11]${NC} VIRGL Android + VIRGL Optimized" | tee -a ~/xfce_gpu.log
+        log "Test 11: VIRGL Android server"
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
+        sleep 2
+        log "Test 11: Server-only mode for proot"
+    elif [[ "$gpu_choice" == "12" ]]; then
+        echo -e "${CYAN}[Test 12]${NC} ZINK Android + ZINK Optimized" | tee -a ~/xfce_gpu.log
+        log "Test 12: ZINK Android server"
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink virgl_test_server_android &
+        sleep 2
+        log "Test 12: Server-only mode for proot"
+    elif [[ "$gpu_choice" == "13" ]]; then
+        echo -e "${CYAN}[Test 13]${NC} VIRGL ANGLE + VIRGL Basic (Mali)" | tee -a ~/xfce_gpu.log
+        log "Test 13: VIRGL ANGLE server"
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android --angle-gl &
+        sleep 2
+        log "Test 13: Server-only mode for proot"
+    elif [[ "$gpu_choice" == "14" ]]; then
+        echo -e "${CYAN}[Test 14]${NC} ZINK EGL Max + VIRGL Optimized" | tee -a ~/xfce_gpu.log
+        log "Test 14: ZINK EGL Max server"
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy mesa_glthread=true vblank_mode=0 virgl_test_server --use-egl-surfaceless --use-gles &
+        sleep 2
+        log "Test 14: Server-only mode for proot"
+    elif [[ "$gpu_choice" == "15" ]]; then
+        echo -e "${CYAN}[Test 15]${NC} VIRGL Android Opt + ZINK Basic" | tee -a ~/xfce_gpu.log
+        log "Test 15: VIRGL Android Optimized server"
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true virgl_test_server_android &
+        sleep 2
+        log "Test 15: Server-only mode for proot"
     else
         echo -e "${YELLOW}[Termux XFCE]${NC} Invalid choice, using software rendering" | tee -a ~/xfce_gpu.log
         log "Invalid gpu_choice='$gpu_choice', using software rendering"
@@ -430,6 +467,36 @@ start_debian_xfce() {
         proot_driver_choice="5"  # VIRGL Basic
         echo -e "${GREEN}✓ Test Mode → Proot using VIRGL Basic (Option 5)${NC}" | tee -a ~/xfce_gpu.log
         log "Proot auto-match: Test Mode, using VIRGL Basic (5)"
+    elif [[ "$termux_gpu_choice" == "11" ]]; then
+        echo ""
+        echo -e "${CYAN}Step 2: Proot GPU (driver) - Auto-selected${NC}"
+        proot_driver_choice="6"  # VIRGL Optimized
+        echo -e "${GREEN}✓ Test 11 → Proot using VIRGL Optimized (Option 6)${NC}" | tee -a ~/xfce_gpu.log
+        log "Proot auto-match: Test 11, using VIRGL Optimized (6)"
+    elif [[ "$termux_gpu_choice" == "12" ]]; then
+        echo ""
+        echo -e "${CYAN}Step 2: Proot GPU (driver) - Auto-selected${NC}"
+        proot_driver_choice="8"  # ZINK Optimized
+        echo -e "${GREEN}✓ Test 12 → Proot using ZINK Optimized (Option 8)${NC}" | tee -a ~/xfce_gpu.log
+        log "Proot auto-match: Test 12, using ZINK Optimized (8)"
+    elif [[ "$termux_gpu_choice" == "13" ]]; then
+        echo ""
+        echo -e "${CYAN}Step 2: Proot GPU (driver) - Auto-selected${NC}"
+        proot_driver_choice="5"  # VIRGL Basic
+        echo -e "${GREEN}✓ Test 13 → Proot using VIRGL Basic (Option 5)${NC}" | tee -a ~/xfce_gpu.log
+        log "Proot auto-match: Test 13, using VIRGL Basic (5)"
+    elif [[ "$termux_gpu_choice" == "14" ]]; then
+        echo ""
+        echo -e "${CYAN}Step 2: Proot GPU (driver) - Auto-selected${NC}"
+        proot_driver_choice="6"  # VIRGL Optimized
+        echo -e "${GREEN}✓ Test 14 → Proot using VIRGL Optimized (Option 6)${NC}" | tee -a ~/xfce_gpu.log
+        log "Proot auto-match: Test 14, using VIRGL Optimized (6)"
+    elif [[ "$termux_gpu_choice" == "15" ]]; then
+        echo ""
+        echo -e "${CYAN}Step 2: Proot GPU (driver) - Auto-selected${NC}"
+        proot_driver_choice="7"  # ZINK Basic
+        echo -e "${GREEN}✓ Test 15 → Proot using ZINK Basic (Option 7)${NC}" | tee -a ~/xfce_gpu.log
+        log "Proot auto-match: Test 15, using ZINK Basic (7)"
     else
         # Manual selection (2-9), show prompt
         echo ""
