@@ -392,9 +392,9 @@ start_debian_xfce() {
         local vulkan=$(getprop ro.hardware.vulkan)
         
         if echo "$egl $vulkan" | grep -iq "adreno"; then
-            proot_driver_choice="4"  # Turnip Aggressive
-            echo -e "${GREEN}✓ Adreno detected → Using Turnip Aggressive (Option 4)${NC}" | tee -a ~/xfce_gpu.log
-            log "Proot auto-detect: Adreno, using Turnip Aggressive (4)"
+            proot_driver_choice="6"  # VIRGL Optimized (Turnip in Termux acts as GPU)
+            echo -e "${GREEN}✓ Adreno detected → Termux using Turnip, Proot using VIRGL Optimized (Option 6)${NC}" | tee -a ~/xfce_gpu.log
+            log "Proot auto-detect: Adreno, Termux has Turnip, using VIRGL Optimized (6)"
         elif echo "$egl $vulkan" | grep -iq "mali"; then
             proot_driver_choice="6"  # VIRGL Optimized
             echo -e "${GREEN}✓ Mali detected → Using VIRGL Optimized (Option 6)${NC}" | tee -a ~/xfce_gpu.log
@@ -405,12 +405,12 @@ start_debian_xfce() {
             log "Proot auto-detect: Unknown GPU, using VIRGL Basic (5)"
         fi
     elif [[ "$termux_gpu_choice" == "2" || "$termux_gpu_choice" == "3" || "$termux_gpu_choice" == "4" ]]; then
-        # Termux Turnip selected, auto-select Turnip Aggressive for proot
+        # Termux Turnip selected - Turnip doesn't work in proot, use VIRGL to connect
         echo ""
         echo -e "${CYAN}Step 2: Proot GPU (driver) - Auto-selected${NC}"
-        proot_driver_choice="4"  # Turnip Aggressive
-        echo -e "${GREEN}✓ Termux using Turnip → Proot using Turnip Aggressive (Option 4)${NC}" | tee -a ~/xfce_gpu.log
-        log "Proot auto-match: Termux Turnip, using Turnip Aggressive (4)"
+        proot_driver_choice="6"  # VIRGL Optimized
+        echo -e "${GREEN}✓ Termux using Turnip (direct GPU) → Proot using VIRGL Optimized to connect (Option 6)${NC}" | tee -a ~/xfce_gpu.log
+        log "Proot auto-match: Termux Turnip (direct), proot using VIRGL Optimized (6)"
     elif [[ "$termux_gpu_choice" == "5" || "$termux_gpu_choice" == "6" ]]; then
         # Termux VIRGL selected, auto-select VIRGL Optimized for proot
         echo ""
