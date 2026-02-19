@@ -282,7 +282,7 @@ get_debian_username() {
                 fi
                 
                 if [[ "$input" != "$username" ]]; then
-                    msg warn "Cleaned to: $username" > /dev/tty
+                    echo -e "${C_WARN}⚠${C_RESET} Formatted to: $username" > /dev/tty
                     echo -n "Accept? (Y/n): " > /dev/tty
                     read -r confirm < /dev/tty
                     log "DEBUG: User confirmation: '$confirm'"
@@ -319,7 +319,7 @@ get_debian_username() {
             fi
             
             if [[ "$input" != "$username" ]]; then
-                msg warn "Cleaned to: $username" > /dev/tty
+                echo -e "${C_WARN}⚠${C_RESET} Formatted to: $username" > /dev/tty
                 echo -n "Accept? (Y/n): " > /dev/tty
                 read -r confirm < /dev/tty
                 log "DEBUG: User confirmation: '$confirm'"
