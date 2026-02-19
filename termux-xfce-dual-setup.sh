@@ -213,7 +213,8 @@ get_debian_username() {
     if [[ -f "$USERNAME_FILE" ]]; then
         username=$(cat "$USERNAME_FILE" | tr -d '[:space:]')
         if [[ "$username" =~ ^[a-z][a-z0-9_-]*$ ]]; then
-            msg ok "Using saved username: $username"
+            echo "$username"
+            return 0
         else
             msg warn "Saved username '$username' is invalid, requesting new username..."
             rm -f "$USERNAME_FILE"
@@ -226,6 +227,8 @@ get_debian_username() {
         if [[ -n "$username" && "$username" != "*" && "$username" =~ ^[a-z][a-z0-9_-]*$ ]]; then
             msg ok "Detected existing Debian user: $username"
             echo "$username" > "$USERNAME_FILE"
+            echo "$username"
+            return 0
         else
             username=""
         fi
@@ -642,8 +645,10 @@ main() {
     read -r
     
     # Get username
-    msg info "Setting up Debian user account..."
     username=$(get_debian_username)
+    if [[ -f "$HOME/.xfce_debian_username" ]]; then
+        msg ok "Using saved username: $username"
+    fi
     
     # Clear any stale locks
     rm -f "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" 2>/dev/null
