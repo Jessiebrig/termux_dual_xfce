@@ -181,27 +181,45 @@ EOF
 
 # Install optional Vulkan drivers (device-specific)
 install_optional_vulkan_drivers() {
-    msg info "Installing optional GPU drivers (device-specific)..."
+    local egl=$(getprop ro.hardware.egl)
+    local vulkan=$(getprop ro.hardware.vulkan)
+    if [[ "$egl" == "$vulkan" ]]; then
+        local gpu_info="$egl"
+    else
+        local gpu_info="$egl / $vulkan"
+    fi
+    
+    # Check system Vulkan/Mesa version
+    local mesa_version=$(getprop ro.vendor.mesa.version 2>/dev/null || echo "unknown")
+    local vulkan_version=$(getprop ro.hardware.vulkan.version 2>/dev/null || echo "unknown")
+    
+    msg info "Installing optional GPU drivers for: $gpu_info"
+    if [[ "$mesa_version" != "unknown" ]]; then
+        msg info "System Mesa version: $mesa_version"
+    fi
+    if [[ "$vulkan_version" != "unknown" ]]; then
+        msg info "System Vulkan version: $vulkan_version"
+    fi
     
     # Check and install vulkan-loader-android
     if pkg install --dry-run vulkan-loader-android 2>/dev/null | grep -q "vulkan-loader-android"; then
         pkg install -y vulkan-loader-android 2>&1 | tee -a "$LOG_FILE" && msg ok "vulkan-loader-android: installed"
     else
-        msg warn "vulkan-loader-android: not available"
+        msg warn "vulkan-loader-android: not available in repository, using system default"
     fi
     
     # Check and install mesa-vulkan-icd-freedreno-dri3 (Adreno)
     if pkg install --dry-run mesa-vulkan-icd-freedreno-dri3 2>/dev/null | grep -q "mesa-vulkan-icd-freedreno-dri3"; then
         pkg install -y mesa-vulkan-icd-freedreno-dri3 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-freedreno-dri3: installed (Adreno)"
     else
-        msg warn "mesa-vulkan-icd-freedreno-dri3: not available (Adreno GPU not detected)"
+        msg warn "mesa-vulkan-icd-freedreno-dri3: not available in repository, using system default"
     fi
     
     # Check and install mesa-vulkan-icd-panfrost (Mali)
     if pkg install --dry-run mesa-vulkan-icd-panfrost 2>/dev/null | grep -q "mesa-vulkan-icd-panfrost"; then
         pkg install -y mesa-vulkan-icd-panfrost 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-panfrost: installed (Mali)"
     else
-        msg warn "mesa-vulkan-icd-panfrost: not available (Mali GPU not detected)"
+        msg warn "mesa-vulkan-icd-panfrost: not available in repository, using system default"
     fi
 }
 
