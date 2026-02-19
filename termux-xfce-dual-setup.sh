@@ -190,6 +190,19 @@ get_gpu_info() {
     fi
 }
 
+# Detect GPU type (adreno, mali, or unknown)
+detect_gpu_type() {
+    local gpu_info=$(get_gpu_info | tr '[:upper:]' '[:lower:]')
+    
+    if [[ "$gpu_info" =~ adreno|freedreno|qcom|qualcomm ]]; then
+        echo "adreno"
+    elif [[ "$gpu_info" =~ mali|panfrost|midgard|bifrost ]]; then
+        echo "mali"
+    else
+        echo "unknown"
+    fi
+}
+
 # Log GPU and graphics versions
 log_gpu_versions() {
     if pkg list-installed 2>/dev/null | grep -q "^mesa"; then
@@ -476,34 +489,58 @@ EOF
     fi
 }
 
-# Install Debian GPU drivers
-install_debian_gpu_drivers() {
+# Install Turnip driver for Debian proot
+install_debian_turnip_driver() {
     local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
     
-    # Check if Turnip driver already installed
+    # Check if already installed
     if [[ -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
         msg ok "Turnip GPU driver already installed, skipping..."
         return 0
     fi
     
-    # Try to install Turnip driver (Adreno GPUs only)
-    msg info "Installing Turnip GPU driver for Debian (Adreno GPUs)..."
-    
+    # Download and install
     local deb_file="mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb"
     local temp_deb="/tmp/$deb_file"
     
     if download_from_repo "$deb_file" "$temp_deb" "Turnip GPU driver"; then
         if proot-distro login debian --shared-tmp -- bash -c "apt install -y $temp_deb && rm -f $temp_deb" 2>&1 | tee -a "$LOG_FILE"; then
             msg ok "Turnip GPU driver installed successfully"
+            return 0
         else
             msg warn "Turnip GPU driver installation failed (non-critical)"
-            msg warn "Note: Turnip is for Adreno GPUs only. Mali GPUs will use software rendering."
+            return 1
         fi
     else
         msg warn "Turnip GPU driver download failed (non-critical)"
-        msg warn "You can retry by running: xrun update"
-        msg warn "Or install manually in proot: proot-distro login debian"
+        return 1
     fi
+}
+
+# Install Debian GPU drivers
+install_debian_gpu_drivers() {
+    local gpu_type=$(detect_gpu_type)
+    local gpu_info=$(get_gpu_info)
+    
+    msg info "Detected GPU: $gpu_info (Type: $gpu_type)"
+    
+    # Install driver based on GPU type
+    case "$gpu_type" in
+        adreno)
+            msg info "Installing Turnip GPU driver for Adreno GPU..."
+            install_debian_turnip_driver
+            ;;
+        mali)
+            msg info "Mali GPU detected - using default Mesa drivers"
+            msg ok "No additional drivers needed for Mali GPU"
+            ;;
+        unknown)
+            msg warn "Unknown GPU type detected, attempting Turnip installation..."
+            if ! install_debian_turnip_driver; then
+                msg warn "Will use software rendering"
+            fi
+            ;;
+    esac
 }
 
 # Install Debian user tools
