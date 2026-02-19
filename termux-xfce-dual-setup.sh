@@ -179,16 +179,40 @@ Name=$name
 EOF
 }
 
-# Install optional Vulkan drivers (device-specific)
-install_optional_vulkan_drivers() {
+# Get GPU info helper
+get_gpu_info() {
     local egl=$(getprop ro.hardware.egl)
     local vulkan=$(getprop ro.hardware.vulkan)
     if [[ "$egl" == "$vulkan" ]]; then
-        local gpu_info="$egl"
+        echo "$egl"
     else
-        local gpu_info="$egl / $vulkan"
+        echo "$egl / $vulkan"
+    fi
+}
+
+# Log GPU and graphics versions
+log_gpu_versions() {
+    if pkg list-installed 2>/dev/null | grep -q "^mesa"; then
+        local mesa_version=$(pkg list-installed 2>/dev/null | grep "^mesa" | head -1 | awk '{print $2}')
+        msg info "Termux Mesa/Zink version: $mesa_version"
     fi
     
+    if command -v vulkaninfo &>/dev/null; then
+        local vulkan_version=$(vulkaninfo 2>/dev/null | grep -i "vulkan" | grep -i "version" | head -1 | awk '{print $NF}')
+        if [[ -n "$vulkan_version" ]]; then
+            msg info "Vulkan API version: $vulkan_version"
+        else
+            log "vulkaninfo command found but no version detected"
+        fi
+    else
+        log "vulkaninfo not installed"
+    fi
+}
+
+# Install optional Vulkan drivers (device-specific)
+install_optional_vulkan_drivers() {
+    local gpu_info=$(get_gpu_info)
+    log_gpu_versions
     msg info "Installing optional GPU drivers for: $gpu_info"
     
     # Check and install vulkan-loader-android
@@ -196,13 +220,6 @@ install_optional_vulkan_drivers() {
         pkg install -y vulkan-loader-android 2>&1 | tee -a "$LOG_FILE" && msg ok "vulkan-loader-android: installed"
     else
         log "vulkan-loader-android: not available in repository, using system default"
-    fi
-    
-    # Check and install vulkan-tools (for vulkaninfo command)
-    if pkg install --dry-run vulkan-tools 2>/dev/null | grep -q "vulkan-tools"; then
-        pkg install -y vulkan-tools 2>&1 | tee -a "$LOG_FILE" && msg ok "vulkan-tools: installed"
-    else
-        log "vulkan-tools: not available in repository"
     fi
     
     # Check and install mesa-vulkan-icd-freedreno-dri3 (Adreno)
@@ -217,24 +234,6 @@ install_optional_vulkan_drivers() {
         pkg install -y mesa-vulkan-icd-panfrost 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-panfrost: installed (Mali)"
     else
         log "mesa-vulkan-icd-panfrost: not available in repository, using system default"
-    fi
-    
-    # Check Mesa version (if installed in Termux)
-    if pkg list-installed 2>/dev/null | grep -q "^mesa"; then
-        local mesa_version=$(pkg list-installed 2>/dev/null | grep "^mesa" | head -1 | awk '{print $2}')
-        msg info "Termux Mesa version: $mesa_version"
-    fi
-    
-    # Check Vulkan version using vulkaninfo (if available)
-    if command -v vulkaninfo &>/dev/null; then
-        local vulkan_version=$(vulkaninfo 2>/dev/null | grep -i "vulkan" | grep -i "version" | head -1 | awk '{print $NF}')
-        if [[ -n "$vulkan_version" ]]; then
-            msg info "Vulkan API version: $vulkan_version"
-        else
-            log "vulkaninfo command found but no version detected"
-        fi
-    else
-        log "vulkaninfo not installed (install with: pkg install vulkan-tools)"
     fi
 }
 
@@ -359,7 +358,7 @@ install_termux_xfce() {
     # Core packages from main/x11-repo (critical)
     for pkg_name in xfce4 xfce4-goodies termux-x11-nightly \
         virglrenderer-android mesa-zink virglrenderer-mesa-zink \
-        papirus-icon-theme starship fastfetch eza bat htop
+        vulkan-tools papirus-icon-theme starship fastfetch eza bat htop
     do
         if ! install_pkg "$pkg_name"; then
             msg error "Failed to install $pkg_name"
@@ -617,6 +616,24 @@ verify_system() {
         else
             msg warn "System RAM: ${total_ram}MB (3GB+ recommended)"
             ((warnings++))
+        fi
+    fi
+    
+    # Check GPU info
+    local gpu_info=$(get_gpu_info)
+    msg ok "GPU: $gpu_info"
+    
+    # Check Mesa/Zink version (if installed)
+    if pkg list-installed 2>/dev/null | grep -q "^mesa"; then
+        local mesa_version=$(pkg list-installed 2>/dev/null | grep "^mesa" | head -1 | awk '{print $2}')
+        msg ok "Mesa/Zink version: $mesa_version"
+    fi
+    
+    # Check Vulkan version (if vulkaninfo available)
+    if command -v vulkaninfo &>/dev/null; then
+        local vulkan_version=$(vulkaninfo 2>/dev/null | grep -i "vulkan" | grep -i "version" | head -1 | awk '{print $NF}')
+        if [[ -n "$vulkan_version" ]]; then
+            msg ok "Vulkan API version: $vulkan_version"
         fi
     fi
     
