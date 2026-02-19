@@ -399,7 +399,6 @@ setup_termux_xfce_config() {
         cat >> "$PREFIX/etc/bash.bashrc" <<EOF
 
 # XFCE Setup Aliases
-alias start_debian='xrun debian'
 alias ls='eza -lF --icons'
 alias cat='bat'
 eval "\$(starship init bash)"
