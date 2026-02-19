@@ -273,8 +273,9 @@ get_debian_username() {
     if [[ -z "$username" ]]; then
         echo ""
         echo "Username requirements: lowercase letters, numbers, hyphens, underscores (must start with letter)"
+        echo "Example: 'Device@123' will become 'device123'"
         while true; do
-            echo -n "Enter username for Debian proot: " > /dev/tty
+            echo -n "Enter username: " > /dev/tty
             read -r input < /dev/tty
             input=$(echo "$input" | tr -d '[:space:]')
             
@@ -296,8 +297,8 @@ get_debian_username() {
             
             if [[ "$input" != "$username" ]]; then
                 echo ""
-                msg warn "Input contained invalid characters. Cleaned username: $username"
-                echo -n "Use '$username'? (Y/n): " > /dev/tty
+                msg warn "Invalid characters removed. Cleaned username: $username"
+                echo -n "Accept '$username' and continue? (Y/n): " > /dev/tty
                 read -r confirm < /dev/tty
                 if [[ "$confirm" =~ ^[Nn]$ ]]; then
                     continue
