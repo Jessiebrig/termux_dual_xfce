@@ -237,6 +237,44 @@ install_optional_vulkan_drivers() {
     fi
 }
 
+# Prompt for username input
+prompt_for_username() {
+    local username
+    echo "" > /dev/tty
+    echo "Username requirements: lowercase letters, numbers, hyphens, underscores (must start with letter)" > /dev/tty
+    echo "Example: 'Device@123' becomes 'device123'" > /dev/tty
+    while true; do
+        echo -n "Enter username: " > /dev/tty
+        read -r input < /dev/tty
+        log "DEBUG: User input: '$input'"
+        
+        if [[ -z "$input" ]]; then
+            msg error "Username cannot be empty" > /dev/tty
+            continue
+        fi
+        
+        # Clean username
+        username=$(echo "$input" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g' | sed 's/^[^a-z]\+//')
+        log "DEBUG: Cleaned username: '$username'"
+        
+        if [[ -z "$username" ]]; then
+            msg error "No valid characters. Use letters, numbers, hyphens, underscores" > /dev/tty
+            continue
+        fi
+        
+        if [[ "$input" != "$username" ]]; then
+            echo -e "${C_WARN}⚠${C_RESET} Formatted to: $username" > /dev/tty
+            echo -n "Accept? (y/N): " > /dev/tty
+            read -r confirm < /dev/tty
+            log "DEBUG: User confirmation: '$confirm'"
+            [[ ! "$confirm" =~ ^[Yy]$ ]] && continue
+        fi
+        
+        echo "$username"
+        return 0
+    done
+}
+
 # Get or create Debian username
 get_debian_username() {
     local USERNAME_FILE="$HOME/.xfce_debian_username"
@@ -259,77 +297,15 @@ get_debian_username() {
             log "DEBUG: Saved detected username to file"
         else
             log "DEBUG: No valid Debian user found, prompting user"
-            echo "" > /dev/tty
-            echo "Username requirements: lowercase letters, numbers, hyphens, underscores (must start with letter)" > /dev/tty
-            echo "Example: 'Device@123' becomes 'device123'" > /dev/tty
-            while true; do
-                echo -n "Enter username: " > /dev/tty
-                read -r input < /dev/tty
-                log "DEBUG: User input: '$input'"
-                
-                if [[ -z "$input" ]]; then
-                    msg error "Username cannot be empty" > /dev/tty
-                    continue
-                fi
-                
-                # Clean username
-                username=$(echo "$input" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g' | sed 's/^[^a-z]\+//')
-                log "DEBUG: Cleaned username: '$username'"
-                
-                if [[ -z "$username" ]]; then
-                    msg error "No valid characters. Use letters, numbers, hyphens, underscores" > /dev/tty
-                    continue
-                fi
-                
-                if [[ "$input" != "$username" ]]; then
-                    echo -e "${C_WARN}⚠${C_RESET} Formatted to: $username" > /dev/tty
-                    echo -n "Accept? (Y/n): " > /dev/tty
-                    read -r confirm < /dev/tty
-                    log "DEBUG: User confirmation: '$confirm'"
-                    [[ "$confirm" =~ ^[Nn]$ ]] && continue
-                fi
-                
-                echo "$username" > "$USERNAME_FILE"
-                log "DEBUG: Saved username to file"
-                break
-            done
+            username=$(prompt_for_username)
+            echo "$username" > "$USERNAME_FILE"
+            log "DEBUG: Saved username to file"
         fi
     else
         log "DEBUG: Fresh install, no Debian directory, prompting user"
-        echo "" > /dev/tty
-        echo "Username requirements: lowercase letters, numbers, hyphens, underscores (must start with letter)" > /dev/tty
-        echo "Example: 'Device@123' becomes 'device123'" > /dev/tty
-        while true; do
-            echo -n "Enter username: " > /dev/tty
-            read -r input < /dev/tty
-            log "DEBUG: User input: '$input'"
-            
-            if [[ -z "$input" ]]; then
-                msg error "Username cannot be empty" > /dev/tty
-                continue
-            fi
-            
-            # Clean username
-            username=$(echo "$input" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g' | sed 's/^[^a-z]\+//')
-            log "DEBUG: Cleaned username: '$username'"
-            
-            if [[ -z "$username" ]]; then
-                msg error "No valid characters. Use letters, numbers, hyphens, underscores" > /dev/tty
-                continue
-            fi
-            
-            if [[ "$input" != "$username" ]]; then
-                echo -e "${C_WARN}⚠${C_RESET} Formatted to: $username" > /dev/tty
-                echo -n "Accept? (Y/n): " > /dev/tty
-                read -r confirm < /dev/tty
-                log "DEBUG: User confirmation: '$confirm'"
-                [[ "$confirm" =~ ^[Nn]$ ]] && continue
-            fi
-            
-            echo "$username" > "$USERNAME_FILE"
-            log "DEBUG: Saved username to file"
-            break
-        done
+        username=$(prompt_for_username)
+        echo "$username" > "$USERNAME_FILE"
+        log "DEBUG: Saved username to file"
     fi
     
     log "DEBUG: Returning username: '$username'"
