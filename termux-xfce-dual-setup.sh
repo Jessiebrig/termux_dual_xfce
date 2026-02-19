@@ -272,14 +272,27 @@ install_core_dependencies() {
 # Install native Termux XFCE packages
 install_termux_xfce() {
     msg info "Installing native Termux XFCE desktop..."
+    # Core packages from main/x11-repo (critical)
     for pkg_name in xfce4 xfce4-goodies termux-x11-nightly \
         virglrenderer-android mesa-zink virglrenderer-mesa-zink \
-        firefox chromium starship fastfetch papirus-icon-theme eza bat htop glmark2
+        papirus-icon-theme starship fastfetch eza bat htop
     do
         if ! install_pkg "$pkg_name"; then
             msg error "Failed to install $pkg_name"
             show_troubleshooting
             exit 1
+        fi
+    done
+    
+    # TUR packages (non-critical, may fail on some devices)
+    msg info "Installing TUR packages (browsers and benchmarks)..."
+    for tur_pkg in firefox chromium glmark2
+    do
+        msg info "Installing $tur_pkg..."
+        if pkg install -y "$tur_pkg" 2>&1 | tee -a "$LOG_FILE"; then
+            msg ok "$tur_pkg installed successfully"
+        else
+            msg warn "$tur_pkg installation failed (non-critical, skipping...)"
         fi
     done
 }
