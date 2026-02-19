@@ -619,24 +619,6 @@ verify_system() {
         fi
     fi
     
-    # Check GPU info
-    local gpu_info=$(get_gpu_info)
-    msg ok "GPU: $gpu_info"
-    
-    # Check Mesa/Zink version (if installed)
-    if pkg list-installed 2>/dev/null | grep -q "^mesa"; then
-        local mesa_version=$(pkg list-installed 2>/dev/null | grep "^mesa" | head -1 | awk '{print $2}')
-        msg ok "Mesa/Zink version: $mesa_version"
-    fi
-    
-    # Check Vulkan version (if vulkaninfo available)
-    if command -v vulkaninfo &>/dev/null; then
-        local vulkan_version=$(vulkaninfo 2>/dev/null | grep -i "vulkan" | grep -i "version" | head -1 | awk '{print $NF}')
-        if [[ -n "$vulkan_version" ]]; then
-            msg ok "Vulkan API version: $vulkan_version"
-        fi
-    fi
-    
     echo ""
     if [[ $errors -gt 0 ]]; then
         msg error "System requirements not met ($errors critical error(s))"

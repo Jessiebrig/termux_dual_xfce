@@ -56,16 +56,19 @@ Installation logs are saved to `~/xfce_install.log` for troubleshooting.
 
 ### Native Termux Environment
 - XFCE4 desktop with goodies and plugins
-- Firefox browser
+- Firefox and Chromium browsers
 - Starship prompt, Fastfetch, eza, bat, htop
 - Papirus icon theme
 - Hardware acceleration (ZINK, VIRGL, Turnip)
+- glmark2 OpenGL benchmark tool
 
 ### Debian Proot Environment
 - XFCE4 desktop with goodies
-- Conky system monitor
+- Firefox ESR and Chromium browsers
+- Conky system monitor (conky-std)
 - Starship prompt, eza, bat, fastfetch, htop
 - Hardware acceleration (ZINK, VIRGL, Turnip)
+- glmark2-x11 OpenGL benchmark tool
 - Sudo configured for passwordless access
 
 ## Available Commands
@@ -81,17 +84,16 @@ Interactive menu with numbered options for all commands below.
 ### Desktop Launchers
 - `xrun xfce` - Launch native Termux XFCE desktop
 - `xrun debian_xfce` - Launch Debian proot XFCE desktop
-- `xrun debian` - Enter Debian proot terminal (display pre-configured for GUI apps)
-
-### Proot Utilities
-- `xrun drun <command>` - Run Debian commands from Termux without entering proot shell
-- `xrun dgpu <command>` - Run Debian apps with hardware acceleration enabled
-- `xrun dfps <command>` - Run Debian with hardware acceleration and FPS overlay
+- `xrun debian` - Enter Debian proot shell (interactive, DISPLAY pre-configured)
 
 ### System Tools
 - `xrun kill_termux_x11` - Stop all Termux-X11 sessions
 - `xrun update` - Run initializer to update xrun and setup scripts
-- `~/xfce_gpu.log` - View GPU acceleration status logs for both environments
+
+### Log Files
+- `~/xfce_gpu.log` - GPU acceleration status and runtime logs
+- `~/xfce_install.log` - Installation summary log
+- `~/xfce_install_full.txt` - Full installation output (optional, saved on request)
 
 ## 🙏 Credits & Acknowledgments
 

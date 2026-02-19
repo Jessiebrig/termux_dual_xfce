@@ -495,6 +495,13 @@ start_debian_xfce() {
     apply_proot_driver "$proot_driver_choice" "$username"
 }
 
+start_debian() {
+    log "start_debian: Entering Debian proot CLI"
+    username=$(get_debian_username)
+    export DISPLAY=:0
+    proot-distro login debian --user $username --shared-tmp
+}
+
 #==============================================================================
 # Helper Functions
 #==============================================================================
@@ -513,6 +520,10 @@ get_file_date() {
     fi
 }
 
+#==============================================================================
+# System Utilities
+#==============================================================================
+
 show_help() {
     if [[ -n "$1" ]]; then
         echo "Unknown command: $1"
@@ -522,44 +533,11 @@ show_help() {
     echo "  xrun                  - Show interactive menu"
     echo "  xrun xfce             - Launch native Termux XFCE"
     echo "  xrun debian_xfce      - Launch Debian XFCE"
-    echo "  xrun debian           - Enter Debian proot CLI"
-    echo "  xrun drun <command>   - Run Debian commands"
-    echo "  xrun dgpu <command>   - Run with hardware acceleration"
-    echo "  xrun dfps <command>   - Run with HW accel + FPS display"
+    echo "  xrun debian           - Enter Debian proot shell (interactive)"
     echo "  xrun kill_termux_x11  - Kill Termux-X11"
     echo "  xrun update           - Run initializer to update scripts"
     echo "  xrun help             - Show this help message"
 }
-
-#==============================================================================
-# Debian Proot Utilities
-#==============================================================================
-
-start_debian() {
-    log "start_debian: Entering Debian proot CLI"
-    username=$(get_debian_username)
-    export DISPLAY=:0
-    proot-distro login debian --user $username --shared-tmp
-}
-
-drun() {
-    username=$(get_debian_username)
-    proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 "$@"
-}
-
-dgpu() {
-    username=$(get_debian_username)
-    proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform "$@"
-}
-
-dfps() {
-    username=$(get_debian_username)
-    proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform GALLIUM_HUD=fps "$@"
-}
-
-#==============================================================================
-# System Utilities
-#==============================================================================
 
 kill_termux_x11() {
     log "kill_termux_x11: Stopping Termux-X11"
@@ -605,17 +583,11 @@ show_menu() {
         echo -e "  ${GREEN}2${NC} - Start Debian XFCE"
         echo "      Launch XFCE desktop in Debian proot"
         echo ""
-        echo -e "  ${GREEN}3${NC} - Start Debian CLI"
-        echo "      Enter Debian proot terminal"
+        echo -e "  ${GREEN}3${NC} - Start Debian Shell"
+        echo "      Enter Debian proot terminal (interactive)"
         echo ""
         echo -e "${CYAN}Utilities:${NC}"
-        echo -e "  ${GREEN}4${NC} - drun <command>"
-        echo "      Run Debian commands from Termux"
-        echo ""
-        echo -e "  ${GREEN}5${NC} - dgpu <command>"
-        echo "      Run with hardware acceleration"
-        echo ""
-        echo -e "  ${GREEN}6${NC} - Kill Termux-X11"
+        echo -e "  ${GREEN}4${NC} - Kill Termux-X11"
         echo "      Stop all X11 sessions"
         echo ""
         echo -e "${CYAN}Setup:${NC}"
@@ -647,26 +619,6 @@ show_menu() {
                 exit 0
                 ;;
             4)
-                echo ""
-                echo -n "Enter command to run: " > /dev/tty
-                read cmd < /dev/tty
-                if [[ -n "$cmd" ]]; then
-                    drun $cmd
-                fi
-                echo -n "Press Enter to continue..." > /dev/tty
-                read < /dev/tty
-                ;;
-            5)
-                echo ""
-                echo -n "Enter command to run: " > /dev/tty
-                read cmd < /dev/tty
-                if [[ -n "$cmd" ]]; then
-                    dgpu $cmd
-                fi
-                echo -n "Press Enter to continue..." > /dev/tty
-                read < /dev/tty
-                ;;
-            6)
                 echo ""
                 echo -e "${YELLOW}Killing Termux-X11...${NC}"
                 kill_termux_x11
@@ -705,18 +657,6 @@ else
             ;;
         debian)
             start_debian
-            ;;
-        drun)
-            shift
-            drun "$@"
-            ;;
-        dgpu)
-            shift
-            dgpu "$@"
-            ;;
-        dfps)
-            shift
-            dfps "$@"
             ;;
         kill_termux_x11)
             kill_termux_x11
