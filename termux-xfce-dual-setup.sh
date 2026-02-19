@@ -97,27 +97,37 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Download conky config helper function
+# Generic file download from GitHub repository
+download_from_repo() {
+    local file_path="$1"        # Path in repo (e.g., ".conkyrc" or "mesa-vulkan-kgsl.deb")
+    local target_path="$2"      # Local destination path
+    local description="$3"      # Description for messages (e.g., "Conky configuration")
+    
+    # Determine branch
+    local branch
+    if [[ -n "${INSTALLER_BRANCH:-}" ]]; then
+        branch="$INSTALLER_BRANCH"
+    elif [[ "${BASH_SOURCE[0]}" == *"feature/"* ]] || [[ "$0" == *"feature/"* ]]; then
+        branch=$(echo "${BASH_SOURCE[0]}" | grep -oP 'feature/[^/]+' | head -1)
+    else
+        branch="main"
+    fi
+    
+    msg info "Downloading $description from $branch..."
+    if curl -sL "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$branch/$file_path" -o "$target_path"; then
+        msg ok "$description downloaded successfully"
+        return 0
+    else
+        msg warn "Failed to download $description, skipping..."
+        return 1
+    fi
+}
+
+# Download conky config helper function (wrapper for backward compatibility)
 download_conky_config() {
     local target_path="$1"
     local env_name="$2"
-    
-    msg info "Installing conky configuration for $env_name..."
-    if [[ -n "${INSTALLER_BRANCH:-}" ]]; then
-        CONKY_BRANCH="$INSTALLER_BRANCH"
-    else
-        if [[ "${BASH_SOURCE[0]}" == *"feature/"* ]] || [[ "$0" == *"feature/"* ]]; then
-            CONKY_BRANCH=$(echo "${BASH_SOURCE[0]}" | grep -oP 'feature/[^/]+' | head -1)
-        else
-            CONKY_BRANCH="main"
-        fi
-    fi
-    
-    if curl -sL "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$CONKY_BRANCH/.conkyrc" -o "$target_path"; then
-        msg ok "Conky configuration installed from $CONKY_BRANCH"
-    else
-        msg warn "Failed to download conky config, skipping..."
-    fi
+    download_from_repo ".conkyrc" "$target_path" "Conky configuration for $env_name"
 }
 
 # Install Termux package helper
@@ -167,6 +177,270 @@ NoDisplay=false
 X-GNOME-Autostart-enabled=true
 Name=$name
 EOF
+}
+
+# Install optional Vulkan drivers (device-specific)
+install_optional_vulkan_drivers() {
+    msg info "Installing optional GPU drivers (device-specific)..."
+    
+    pkg install -y vulkan-loader-android 2>/dev/null && msg ok "vulkan-loader-android: installed"
+    pkg install -y mesa-vulkan-icd-freedreno-dri3 2>/dev/null && msg ok "mesa-vulkan-icd-freedreno-dri3: installed (Adreno)"
+    pkg install -y mesa-vulkan-icd-panfrost 2>/dev/null && msg ok "mesa-vulkan-icd-panfrost: installed (Mali)"
+}
+
+# Get or create Debian username
+get_debian_username() {
+    local USERNAME_FILE="$HOME/.xfce_debian_username"
+    local username
+    
+    if [[ -f "$USERNAME_FILE" ]]; then
+        username=$(cat "$USERNAME_FILE")
+        msg ok "Using saved username: $username"
+    elif [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
+        username=$(basename "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/"* 2>/dev/null | grep -v "^root$" | head -n1)
+        if [[ -n "$username" && "$username" != "*" ]]; then
+            msg ok "Detected existing Debian user: $username"
+            echo "$username" > "$USERNAME_FILE"
+        else
+            echo ""
+            echo -n "Enter username for Debian proot: " > /dev/tty
+            read -r username < /dev/tty
+            if [[ -z "$username" ]]; then
+                msg error "Username cannot be empty"
+                exit 1
+            fi
+            echo "$username" > "$USERNAME_FILE"
+        fi
+    else
+        echo ""
+        echo -n "Enter username for Debian proot: " > /dev/tty
+        read -r username < /dev/tty
+        if [[ -z "$username" ]]; then
+            msg error "Username cannot be empty"
+            exit 1
+        fi
+        echo "$username" > "$USERNAME_FILE"
+    fi
+    
+    echo "$username"
+}
+
+# Setup Termux storage access
+setup_storage() {
+    if [[ ! -d ~/storage ]]; then
+        echo ""
+        msg info "Requesting storage access..."
+        echo "Tap 'Allow' when prompted"
+        termux-setup-storage
+    else
+        msg ok "Storage access already configured"
+    fi
+}
+
+# Upgrade Termux packages
+upgrade_packages() {
+    msg info "Updating and upgrading packages..."
+    if ! pkg upgrade -y -o Dpkg::Options::="--force-confold"; then
+        msg warn "Upgrade failed, please select a mirror..."
+        termux-change-repo
+        sleep 2
+        rm -f "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" 2>/dev/null
+        msg info "Retrying package upgrade..."
+        if ! pkg upgrade -y -o Dpkg::Options::="--force-confold"; then
+            msg error "Failed to upgrade packages after changing mirror"
+            show_troubleshooting
+            exit 1
+        fi
+    fi
+    msg ok "Packages updated successfully"
+}
+
+# Install core Termux dependencies
+install_core_dependencies() {
+    msg info "Installing core dependencies..."
+    for pkg_name in proot-distro x11-repo tur-repo pulseaudio util-linux git
+    do
+        if ! install_pkg "$pkg_name"; then
+            msg error "Failed to install $pkg_name"
+            show_troubleshooting
+            exit 1
+        fi
+    done
+    msg ok "Core dependencies installed successfully"
+}
+
+# Install native Termux XFCE packages
+install_termux_xfce() {
+    msg info "Installing native Termux XFCE desktop..."
+    for pkg_name in xfce4 xfce4-goodies termux-x11-nightly \
+        virglrenderer-android mesa-zink virglrenderer-mesa-zink \
+        firefox chromium starship fastfetch papirus-icon-theme eza bat htop glmark2
+    do
+        if ! install_pkg "$pkg_name"; then
+            msg error "Failed to install $pkg_name"
+            show_troubleshooting
+            exit 1
+        fi
+    done
+}
+
+# Setup Termux XFCE configuration
+setup_termux_xfce_config() {
+    msg info "Creating directory structure..."
+    mkdir -p "$HOME"/{Desktop,Downloads,.config/xfce4/xfconf/xfce-perchannel-xml,.config/autostart}
+    
+    msg info "Initializing XFCE settings..."
+    export DISPLAY=:0
+    xfconf-query -c xfce4-session -p /startup/compat/LaunchGNOME -n -t bool -s false 2>&1 | tee -a "$LOG_FILE" || msg warn "xfconf-query LaunchGNOME failed (non-critical)"
+    xfconf-query -c xfce4-session -p /general/FailsafeSessionName -n -t string -s "Failsafe" 2>&1 | tee -a "$LOG_FILE" || msg warn "xfconf-query FailsafeSessionName failed (non-critical)"
+    
+    create_autostart "$HOME/.config/autostart" "Terminal" "xfce4-terminal"
+    
+    msg info "Configuring shell aliases..."
+    if ! grep -q "# XFCE Setup Aliases" "$PREFIX/etc/bash.bashrc"; then
+        cat >> "$PREFIX/etc/bash.bashrc" <<EOF
+
+# XFCE Setup Aliases
+alias start_debian='xrun debian'
+alias ls='eza -lF --icons'
+alias cat='bat'
+eval "\$(starship init bash)"
+fastfetch
+EOF
+    else
+        msg ok "Aliases already configured, skipping..."
+    fi
+}
+
+# Install and setup Debian proot
+setup_debian_proot() {
+    local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
+    
+    if [[ -d "$DEBIAN_ROOT" ]]; then
+        msg ok "Debian proot already installed, skipping..."
+    else
+        msg info "Installing Debian proot environment..."
+        proot-distro install debian
+    fi
+    
+    msg info "Configuring Debian environment..."
+    proot-distro login debian --shared-tmp -- apt update
+    proot-distro login debian --shared-tmp -- apt upgrade -y
+    
+    msg info "Installing Debian packages..."
+    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 firefox-esr chromium htop glmark2 curl
+    do
+        if ! install_deb_pkg "$deb_pkg"; then
+            msg error "Failed to install Debian package: $deb_pkg"
+            exit 1
+        fi
+    done
+    
+    install_deb_pkg conky-std || msg warn "Failed to install conky-std (non-critical)"
+    msg ok "Debian packages installed successfully"
+}
+
+# Setup Debian user and permissions
+setup_debian_user() {
+    local username="$1"
+    local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
+    
+    if ! proot-distro login debian --shared-tmp -- id "$username" &>/dev/null; then
+        msg info "Creating Debian user: $username..."
+        proot-distro login debian --shared-tmp -- groupadd -f storage
+        proot-distro login debian --shared-tmp -- groupadd -f wheel
+        proot-distro login debian --shared-tmp -- useradd -m -g users -G wheel,audio,video,storage -s /bin/bash "$username"
+    else
+        msg ok "Debian user $username already exists, skipping..."
+    fi
+    
+    if ! grep -q "$username ALL=(ALL) NOPASSWD:ALL" "$DEBIAN_ROOT/etc/sudoers" 2>/dev/null; then
+        msg info "Configuring sudo for $username..."
+        chmod u+rw "$DEBIAN_ROOT/etc/sudoers"
+        echo "$username ALL=(ALL) NOPASSWD:ALL" >> "$DEBIAN_ROOT/etc/sudoers"
+        chmod u-w "$DEBIAN_ROOT/etc/sudoers"
+    else
+        msg ok "Sudo already configured for $username, skipping..."
+    fi
+}
+
+# Setup Debian XFCE configuration
+setup_debian_xfce_config() {
+    local username="$1"
+    local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
+    
+    create_autostart "$DEBIAN_ROOT/home/$username/.config/autostart" "Terminal" "xfce4-terminal"
+    create_autostart "$DEBIAN_ROOT/home/$username/.config/autostart" "Conky" "conky"
+    download_conky_config "$DEBIAN_ROOT/home/$username/.conkyrc" "Debian"
+    chown -R $(stat -c '%u:%g' "$DEBIAN_ROOT/home/$username") "$DEBIAN_ROOT/home/$username/.config" 2>&1 | tee -a "$LOG_FILE" || msg warn "chown failed (non-critical)"
+    
+    if ! grep -q "export DISPLAY=:0" "$DEBIAN_ROOT/home/$username/.bashrc" 2>/dev/null; then
+        msg info "Configuring Debian user environment..."
+        cat >> "$DEBIAN_ROOT/home/$username/.bashrc" <<EOF
+
+export DISPLAY=:0
+alias ls='eza -lF --icons' 2>/dev/null || alias ls='ls --color=auto'
+alias cat='bat' 2>/dev/null || alias cat='cat'
+eval "\$(starship init bash)" 2>/dev/null || true
+EOF
+    else
+        msg ok "Debian user environment already configured, skipping..."
+    fi
+}
+
+# Install Debian GPU drivers
+install_debian_gpu_drivers() {
+    local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
+    
+    if [[ ! -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
+        msg info "Installing Turnip GPU driver for Debian..."
+        
+        local deb_file="mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb"
+        local temp_deb="/tmp/$deb_file"
+        
+        if download_from_repo "$deb_file" "$temp_deb" "Turnip GPU driver"; then
+            proot-distro login debian --shared-tmp -- bash -c "
+                apt install -y $temp_deb
+                rm -f $temp_deb
+            "
+            msg ok "Turnip GPU driver installed successfully"
+        else
+            msg warn "Turnip GPU driver installation skipped"
+        fi
+    else
+        msg ok "Turnip GPU driver already installed, skipping..."
+    fi
+}
+
+# Install Debian user tools
+install_debian_user_tools() {
+    local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
+    
+    msg info "Installing user tools in Debian..."
+    
+    if ! proot-distro login debian --shared-tmp -- dpkg -l eza 2>/dev/null | grep -q "^ii"; then
+        proot-distro login debian --shared-tmp -- bash -c "
+            mkdir -p /etc/apt/keyrings
+            curl -fsSL https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
+            echo 'deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main' | tee /etc/apt/sources.list.d/gierens.list
+            chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
+            apt update
+        " 2>&1 | tee -a "$LOG_FILE" || msg warn "eza repository setup failed (non-critical)"
+    fi
+    
+    for user_pkg in eza bat fastfetch
+    do
+        install_deb_pkg "$user_pkg" || msg warn "Failed to install $user_pkg (non-critical)"
+    done
+    
+    if proot-distro login debian --shared-tmp -- command -v starship &>/dev/null; then
+        msg ok "starship already installed, skipping..."
+    else
+        msg info "Installing starship..."
+        proot-distro login debian --shared-tmp -- bash -c "curl -sL https://starship.rs/install.sh | sh -s -- -y" 2>&1 | tee -a "$LOG_FILE" || msg warn "Failed to install starship (non-critical)"
+    fi
+    
+    msg ok "User tools installation complete"
 }
 
 # System verification
@@ -268,7 +542,7 @@ main() {
     
     clear
     
-    # Display script file info AFTER clear
+    # Display script file info
     if [[ -f "${BASH_SOURCE[0]}" ]]; then
         SETUP_DATE=$(ls -l "${BASH_SOURCE[0]}" 2>/dev/null | awk '{print $6, $7, $8}' || stat -c %y "${BASH_SOURCE[0]}" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "${BASH_SOURCE[0]}" 2>/dev/null || date -r "${BASH_SOURCE[0]}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "Unknown")
         echo ""
@@ -298,252 +572,26 @@ main() {
     read -r
     
     # Get username
-    USERNAME_FILE="$HOME/.xfce_debian_username"
-    if [[ -f "$USERNAME_FILE" ]]; then
-        username=$(cat "$USERNAME_FILE")
-        msg ok "Using saved username: $username"
-    elif [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
-        # Detect existing username from Debian home directory
-        username=$(basename "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/"* 2>/dev/null | grep -v "^root$" | head -n1)
-        if [[ -n "$username" && "$username" != "*" ]]; then
-            msg ok "Detected existing Debian user: $username"
-            echo "$username" > "$USERNAME_FILE"
-        else
-            echo ""
-            echo -n "Enter username for Debian proot: " > /dev/tty
-            read -r username < /dev/tty
-            if [[ -z "$username" ]]; then
-                msg error "Username cannot be empty"
-                exit 1
-            fi
-            echo "$username" > "$USERNAME_FILE"
-        fi
-    else
-        echo ""
-        echo -n "Enter username for Debian proot: " > /dev/tty
-        read -r username < /dev/tty
-        if [[ -z "$username" ]]; then
-            msg error "Username cannot be empty"
-            exit 1
-        fi
-        echo "$username" > "$USERNAME_FILE"
-    fi
+    username=$(get_debian_username)
     
     # Clear any stale locks
     rm -f "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" 2>/dev/null
     
-    # Setup storage
-    if [[ ! -d ~/storage ]]; then
-        echo ""
-        msg info "Requesting storage access..."
-        echo "Tap 'Allow' when prompted"
-        termux-setup-storage
-    else
-        msg ok "Storage access already configured"
-    fi
-    
-    # Upgrade packages (this also updates package lists)
-    msg info "Updating and upgrading packages..."
-    if ! pkg upgrade -y -o Dpkg::Options::="--force-confold"; then
-        msg warn "Upgrade failed, please select a mirror..."
-        termux-change-repo
-        sleep 2
-        rm -f "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" 2>/dev/null
-        msg info "Retrying package upgrade..."
-        if ! pkg upgrade -y -o Dpkg::Options::="--force-confold"; then
-            msg error "Failed to upgrade packages after changing mirror"
-            show_troubleshooting
-            exit 1
-        fi
-    fi
-    msg ok "Packages updated successfully"
-    
-    # Install core dependencies
-    msg info "Installing core dependencies..."
-    for pkg_name in proot-distro x11-repo tur-repo pulseaudio util-linux git
-    do
-        if ! install_pkg "$pkg_name"; then
-            msg error "Failed to install $pkg_name"
-            show_troubleshooting
-            exit 1
-        fi
-    done
-    msg ok "Core dependencies installed successfully"
-    
-    # Install native Termux XFCE
-    msg info "Installing native Termux XFCE desktop..."
-    for pkg_name in xfce4 xfce4-goodies termux-x11-nightly \
-        virglrenderer-android mesa-zink virglrenderer-mesa-zink \
-        firefox chromium starship fastfetch papirus-icon-theme eza bat htop glmark2
-    do
-        if ! install_pkg "$pkg_name"; then
-            msg error "Failed to install $pkg_name"
-            show_troubleshooting
-            exit 1
-        fi
-    done
-    
-    # Try to install optional Vulkan packages (check compatibility first)
-    msg info "Checking Vulkan driver compatibility..."
-    if pkg install -y --dry-run vulkan-loader-android 2>/dev/null | grep -q "0 newly installed"; then
-        msg warn "vulkan-loader-android not compatible with this device"
-    else
-        pkg install -y vulkan-loader-android 2>/dev/null && msg ok "vulkan-loader-android installed" || msg warn "vulkan-loader-android installation failed"
-    fi
-    
-    if pkg install -y --dry-run mesa-vulkan-icd-freedreno-dri3 2>&1 | grep -q "unmet dependencies\|not going to be installed"; then
-        msg warn "mesa-vulkan-icd-freedreno-dri3 not compatible with this device"
-    else
-        pkg install -y mesa-vulkan-icd-freedreno-dri3 2>/dev/null && msg ok "mesa-vulkan-icd-freedreno-dri3 installed" || msg warn "mesa-vulkan-icd-freedreno-dri3 installation failed"
-    fi
-    
+    # Setup Termux environment
+    setup_storage
+    upgrade_packages
+    install_core_dependencies
+    install_termux_xfce
+    install_optional_vulkan_drivers
     msg ok "XFCE desktop environment installed successfully"
-    
-    # Create directories
-    msg info "Creating directory structure..."
-    mkdir -p "$HOME"/{Desktop,Downloads,.config/xfce4/xfconf/xfce-perchannel-xml,.config/autostart}
-    
-    # Initialize XFCE settings to prevent first-run errors
-    msg info "Initializing XFCE settings..."
-    export DISPLAY=:0
-    xfconf-query -c xfce4-session -p /startup/compat/LaunchGNOME -n -t bool -s false 2>&1 | tee -a "$LOG_FILE" || msg warn "xfconf-query LaunchGNOME failed (non-critical)"
-    xfconf-query -c xfce4-session -p /general/FailsafeSessionName -n -t string -s "Failsafe" 2>&1 | tee -a "$LOG_FILE" || msg warn "xfconf-query FailsafeSessionName failed (non-critical)"
-    
-    # Auto-start terminal on native Termux XFCE startup
-    create_autostart "$HOME/.config/autostart" "Terminal" "xfce4-terminal"
-    
-    # Setup aliases
-    msg info "Configuring shell aliases..."
-    if ! grep -q "# XFCE Setup Aliases" "$PREFIX/etc/bash.bashrc"; then
-        cat >> "$PREFIX/etc/bash.bashrc" <<EOF
-
-# XFCE Setup Aliases
-alias start_debian='xrun debian'
-alias ls='eza -lF --icons'
-alias cat='bat'
-eval "\$(starship init bash)"
-fastfetch
-EOF
-    else
-        msg ok "Aliases already configured, skipping..."
-    fi
-    
-    # Debian root path variable
-    DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
-    
-    # Install Debian proot
-    if [[ -d "$DEBIAN_ROOT" ]]; then
-        msg ok "Debian proot already installed, skipping..."
-    else
-        msg info "Installing Debian proot environment..."
-        proot-distro install debian
-    fi
-    
-    # Setup Debian packages
-    msg info "Configuring Debian environment..."
-    proot-distro login debian --shared-tmp -- apt update
-    proot-distro login debian --shared-tmp -- apt upgrade -y
-    
-    msg info "Installing Debian packages..."
-    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 firefox-esr chromium htop glmark2
-    do
-        if ! install_deb_pkg "$deb_pkg"; then
-            msg error "Failed to install Debian package: $deb_pkg"
-            exit 1
-        fi
-    done
-    
-    # Install conky-std separately (non-critical)
-    install_deb_pkg conky-std || msg warn "Failed to install conky-std (non-critical)"
-    
-    msg ok "Debian packages installed successfully"
-    
-    # Create Debian user
-    if ! proot-distro login debian --shared-tmp -- id "$username" &>/dev/null; then
-        msg info "Creating Debian user: $username..."
-        proot-distro login debian --shared-tmp -- groupadd -f storage
-        proot-distro login debian --shared-tmp -- groupadd -f wheel
-        proot-distro login debian --shared-tmp -- useradd -m -g users -G wheel,audio,video,storage -s /bin/bash "$username"
-    else
-        msg ok "Debian user $username already exists, skipping..."
-    fi
-    
-    # Configure sudo
-    if ! grep -q "$username ALL=(ALL) NOPASSWD:ALL" "$DEBIAN_ROOT/etc/sudoers" 2>/dev/null; then
-        msg info "Configuring sudo for $username..."
-        chmod u+rw "$DEBIAN_ROOT/etc/sudoers"
-        echo "$username ALL=(ALL) NOPASSWD:ALL" >> "$DEBIAN_ROOT/etc/sudoers"
-        chmod u-w "$DEBIAN_ROOT/etc/sudoers"
-    else
-        msg ok "Sudo already configured for $username, skipping..."
-    fi
-    
-    # Auto-start terminal and conky on Debian XFCE startup
-    create_autostart "$DEBIAN_ROOT/home/$username/.config/autostart" "Terminal" "xfce4-terminal"
-    create_autostart "$DEBIAN_ROOT/home/$username/.config/autostart" "Conky" "conky"
-    
-    # Download conky config for Debian
-    download_conky_config "$DEBIAN_ROOT/home/$username/.conkyrc" "Debian"
-    
-    chown -R $(stat -c '%u:%g' "$DEBIAN_ROOT/home/$username") "$DEBIAN_ROOT/home/$username/.config" 2>&1 | tee -a "$LOG_FILE" || msg warn "chown failed (non-critical)"
+    setup_termux_xfce_config
     
     # Setup Debian environment
-    if ! grep -q "export DISPLAY=:0" "$DEBIAN_ROOT/home/$username/.bashrc" 2>/dev/null; then
-        msg info "Configuring Debian user environment..."
-        cat >> "$DEBIAN_ROOT/home/$username/.bashrc" <<EOF
-
-export DISPLAY=:0
-alias ls='eza -lF --icons' 2>/dev/null || alias ls='ls --color=auto'
-alias cat='bat' 2>/dev/null || alias cat='cat'
-eval "\$(starship init bash)" 2>/dev/null || true
-EOF
-    else
-        msg ok "Debian user environment already configured, skipping..."
-    fi
-    
-    # Setup hardware acceleration in Debian (Turnip driver for Adreno 6XX/7XX)
-    if [[ ! -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
-        msg info "Installing Turnip GPU driver for Debian..."
-        proot-distro login debian --shared-tmp -- bash -c "
-            curl -L 'https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/${BRANCH}/mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb' -o mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
-            apt install -y ./mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
-            rm mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
-        "
-        msg ok "Turnip GPU driver installed successfully"
-    else
-        msg ok "Turnip GPU driver already installed, skipping..."
-    fi
-    
-    # Install aesthetic packages in Debian
-    msg info "Installing aesthetic packages in Debian..."
-    
-    # Setup eza repository first (required for eza installation)
-    if ! proot-distro login debian --shared-tmp -- dpkg -l eza 2>/dev/null | grep -q "^ii"; then
-        proot-distro login debian --shared-tmp -- bash -c "
-            apt install -y curl
-            mkdir -p /etc/apt/keyrings
-            curl -fsSL https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
-            echo 'deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main' | tee /etc/apt/sources.list.d/gierens.list
-            chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
-            apt update
-        " 2>&1 | tee -a "$LOG_FILE" || msg warn "eza repository setup failed (non-critical)"
-    fi
-    
-    # Install aesthetic packages
-    for aesthetic_pkg in eza bat fastfetch
-    do
-        install_deb_pkg "$aesthetic_pkg" || msg warn "Failed to install $aesthetic_pkg (non-critical)"
-    done
-    
-    # Install starship (uses different installation method)
-    if proot-distro login debian --shared-tmp -- command -v starship &>/dev/null; then
-        msg ok "starship already installed, skipping..."
-    else
-        msg info "Installing starship..."
-        proot-distro login debian --shared-tmp -- bash -c "curl -sL https://starship.rs/install.sh | sh -s -- -y" 2>&1 | tee -a "$LOG_FILE" || msg warn "Failed to install starship (non-critical)"
-    fi
-    
-    msg ok "Aesthetic packages installation complete"
+    setup_debian_proot
+    setup_debian_user "$username"
+    setup_debian_xfce_config "$username"
+    install_debian_gpu_drivers
+    install_debian_user_tools
     
     # Completion message
     echo ""
