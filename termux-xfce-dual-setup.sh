@@ -684,9 +684,6 @@ main() {
     # Get username
     local username
     username=$(get_debian_username)
-    if [[ -f "$HOME/.xfce_debian_username" ]]; then
-        msg ok "Using saved username: $username"
-    fi
     
     # Clear any stale locks
     rm -f "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" 2>/dev/null
