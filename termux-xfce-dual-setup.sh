@@ -114,7 +114,7 @@ download_from_repo() {
     fi
     
     msg info "Downloading $description from $branch..."
-    if curl -sL "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$branch/$file_path" -o "$target_path"; then
+    if curl -L "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$branch/$file_path" -o "$target_path"; then
         msg ok "$description downloaded successfully"
         return 0
     else
@@ -183,9 +183,26 @@ EOF
 install_optional_vulkan_drivers() {
     msg info "Installing optional GPU drivers (device-specific)..."
     
-    pkg install -y vulkan-loader-android 2>/dev/null && msg ok "vulkan-loader-android: installed"
-    pkg install -y mesa-vulkan-icd-freedreno-dri3 2>/dev/null && msg ok "mesa-vulkan-icd-freedreno-dri3: installed (Adreno)"
-    pkg install -y mesa-vulkan-icd-panfrost 2>/dev/null && msg ok "mesa-vulkan-icd-panfrost: installed (Mali)"
+    # Check and install vulkan-loader-android
+    if pkg install --dry-run vulkan-loader-android 2>/dev/null | grep -q "vulkan-loader-android"; then
+        pkg install -y vulkan-loader-android 2>&1 | tee -a "$LOG_FILE" && msg ok "vulkan-loader-android: installed"
+    else
+        msg warn "vulkan-loader-android: not available"
+    fi
+    
+    # Check and install mesa-vulkan-icd-freedreno-dri3 (Adreno)
+    if pkg install --dry-run mesa-vulkan-icd-freedreno-dri3 2>/dev/null | grep -q "mesa-vulkan-icd-freedreno-dri3"; then
+        pkg install -y mesa-vulkan-icd-freedreno-dri3 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-freedreno-dri3: installed (Adreno)"
+    else
+        msg warn "mesa-vulkan-icd-freedreno-dri3: not available (Adreno GPU not detected)"
+    fi
+    
+    # Check and install mesa-vulkan-icd-panfrost (Mali)
+    if pkg install --dry-run mesa-vulkan-icd-panfrost 2>/dev/null | grep -q "mesa-vulkan-icd-panfrost"; then
+        pkg install -y mesa-vulkan-icd-panfrost 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-panfrost: installed (Mali)"
+    else
+        msg warn "mesa-vulkan-icd-panfrost: not available (Mali GPU not detected)"
+    fi
 }
 
 # Get or create Debian username
@@ -349,13 +366,8 @@ setup_debian_proot() {
         fi
     done
     
-    # Install glmark2-x11 separately (may conflict with glmark2)
-    msg info "Installing glmark2-x11 for Debian..."
-    if proot-distro login debian --shared-tmp -- apt install -y glmark2-x11 2>&1 | tee -a "$LOG_FILE"; then
-        msg ok "glmark2-x11 installed successfully"
-    else
-        msg warn "glmark2-x11 installation failed (non-critical, skipping...)"
-    fi
+    # Install glmark2-x11 (X11 variant of glmark2 benchmark tool)
+    install_deb_pkg glmark2-x11 || msg warn "Failed to install glmark2-x11 (non-critical)"
     
     install_deb_pkg conky-std || msg warn "Failed to install conky-std (non-critical)"
     msg ok "Debian packages installed successfully"
@@ -413,23 +425,29 @@ EOF
 install_debian_gpu_drivers() {
     local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
     
-    if [[ ! -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
-        msg info "Installing Turnip GPU driver for Debian..."
-        
-        local deb_file="mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb"
-        local temp_deb="/tmp/$deb_file"
-        
-        if download_from_repo "$deb_file" "$temp_deb" "Turnip GPU driver"; then
-            proot-distro login debian --shared-tmp -- bash -c "
-                apt install -y $temp_deb
-                rm -f $temp_deb
-            "
+    # Check if Turnip driver already installed
+    if [[ -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
+        msg ok "Turnip GPU driver already installed, skipping..."
+        return 0
+    fi
+    
+    # Try to install Turnip driver (Adreno GPUs only)
+    msg info "Installing Turnip GPU driver for Debian (Adreno GPUs)..."
+    
+    local deb_file="mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb"
+    local temp_deb="/tmp/$deb_file"
+    
+    if download_from_repo "$deb_file" "$temp_deb" "Turnip GPU driver"; then
+        if proot-distro login debian --shared-tmp -- bash -c "apt install -y $temp_deb && rm -f $temp_deb" 2>&1 | tee -a "$LOG_FILE"; then
             msg ok "Turnip GPU driver installed successfully"
         else
-            msg warn "Turnip GPU driver installation skipped"
+            msg warn "Turnip GPU driver installation failed (non-critical)"
+            msg warn "Note: Turnip is for Adreno GPUs only. Mali GPUs will use software rendering."
         fi
     else
-        msg ok "Turnip GPU driver already installed, skipping..."
+        msg warn "Turnip GPU driver download failed (non-critical)"
+        msg warn "You can retry by running: xrun update"
+        msg warn "Or install manually in proot: proot-distro login debian"
     fi
 }
 
@@ -442,7 +460,7 @@ install_debian_user_tools() {
     if ! proot-distro login debian --shared-tmp -- dpkg -l eza 2>/dev/null | grep -q "^ii"; then
         proot-distro login debian --shared-tmp -- bash -c "
             mkdir -p /etc/apt/keyrings
-            curl -fsSL https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
+            curl -L https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
             echo 'deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main' | tee /etc/apt/sources.list.d/gierens.list
             chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
             apt update
@@ -458,7 +476,7 @@ install_debian_user_tools() {
         msg ok "starship already installed, skipping..."
     else
         msg info "Installing starship..."
-        proot-distro login debian --shared-tmp -- bash -c "curl -sL https://starship.rs/install.sh | sh -s -- -y" 2>&1 | tee -a "$LOG_FILE" || msg warn "Failed to install starship (non-critical)"
+        proot-distro login debian --shared-tmp -- bash -c "curl -L https://starship.rs/install.sh | sh -s -- -y" 2>&1 | tee -a "$LOG_FILE" || msg warn "Failed to install starship (non-critical)"
     fi
     
     msg ok "User tools installation complete"

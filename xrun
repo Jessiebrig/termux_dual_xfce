@@ -574,7 +574,7 @@ run_initializer() {
     echo ""
     echo -e "${GREEN}Downloading initializer...${NC}"
     
-    if curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o "$tmp"; then
+    if curl -L https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o "$tmp"; then
         chmod +x "$tmp"
         exec bash "$tmp"
     else
