@@ -244,11 +244,15 @@ get_debian_username() {
     
     if [[ -f "$USERNAME_FILE" ]]; then
         username=$(cat "$USERNAME_FILE" | tr -d '[:space:]')
-        if [[ "$username" =~ ^[a-z][a-z0-9_-]*$ ]]; then
+        if [[ -n "$username" ]] && [[ "$username" =~ ^[a-z][a-z0-9_-]*$ ]]; then
             echo "$username"
             return 0
         else
-            msg warn "Saved username '$username' is invalid, requesting new username..."
+            if [[ -z "$username" ]]; then
+                msg warn "Saved username file is empty, requesting new username..."
+            else
+                msg warn "Saved username '$username' is invalid, requesting new username..."
+            fi
             rm -f "$USERNAME_FILE"
             username=""
         fi

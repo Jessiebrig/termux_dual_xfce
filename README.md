@@ -6,6 +6,7 @@
 A lightweight script to set up native XFCE desktop environment and Debian proot with XFCE in Termux. Optimized for speed and efficiency with a streamlined installation process.
 
 ## Key Features
+- **No Root Required**: Works on non-rooted Android devices
 - **Dual Desktop Environment**: Native Termux XFCE + Debian proot XFCE
 - **Hardware Acceleration**: GPU support with auto-detection (Adreno/Mali), Vulkan drivers, and real-time status logging
 - **Dynamic Branch Selection**: Choose stable or experimental versions for testing new features
@@ -17,6 +18,7 @@ A lightweight script to set up native XFCE desktop environment and Debian proot 
 ## Requirements
 
 - **Operating System**: Android 7.0+ (Nougat or higher)
+- **Root Access**: NOT required - works on non-rooted devices
 - **Architecture**: ARM64/aarch64 recommended (32-bit ARM supported but not recommended due to performance limitations)
 - **Storage**: 8GB+ free space recommended
 - **RAM**: 3GB+ recommended
