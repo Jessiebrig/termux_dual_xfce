@@ -286,8 +286,8 @@ get_debian_username() {
             # Clean username: lowercase, remove invalid chars
             username=$(echo "$input" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
             
-            # Ensure it starts with a letter
-            username=$(echo "$username" | sed 's/^[^a-z]*//')
+            # Ensure it starts with a letter (remove leading non-letters only)
+            username=$(echo "$username" | sed 's/^[^a-z]\+//')
             
             if [[ -z "$username" ]]; then
                 msg error "No valid characters found. Please use letters, numbers, hyphens, or underscores"
