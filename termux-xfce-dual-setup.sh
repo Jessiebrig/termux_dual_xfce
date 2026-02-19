@@ -189,29 +189,7 @@ install_optional_vulkan_drivers() {
         local gpu_info="$egl / $vulkan"
     fi
     
-    # Check system Vulkan/Mesa version (try multiple methods)
-    local mesa_version="unknown"
-    local vulkan_version="unknown"
-    
-    # Try different property names for Mesa version
-    mesa_version=$(getprop ro.vendor.mesa.version 2>/dev/null)
-    [[ -z "$mesa_version" ]] && mesa_version=$(getprop ro.mesa.version 2>/dev/null)
-    [[ -z "$mesa_version" ]] && mesa_version=$(getprop vendor.mesa.version 2>/dev/null)
-    [[ -z "$mesa_version" ]] && mesa_version="unknown"
-    
-    # Try different property names for Vulkan version
-    vulkan_version=$(getprop ro.hardware.vulkan.version 2>/dev/null)
-    [[ -z "$vulkan_version" ]] && vulkan_version=$(getprop ro.vendor.vulkan.version 2>/dev/null)
-    [[ -z "$vulkan_version" ]] && vulkan_version=$(getprop vendor.vulkan.version 2>/dev/null)
-    [[ -z "$vulkan_version" ]] && vulkan_version="unknown"
-    
     msg info "Installing optional GPU drivers for: $gpu_info"
-    if [[ "$mesa_version" != "unknown" ]]; then
-        msg info "System Mesa version: $mesa_version"
-    fi
-    if [[ "$vulkan_version" != "unknown" ]]; then
-        msg info "System Vulkan version: $vulkan_version"
-    fi
     
     # Check and install vulkan-loader-android
     if pkg install --dry-run vulkan-loader-android 2>/dev/null | grep -q "vulkan-loader-android"; then
@@ -232,6 +210,20 @@ install_optional_vulkan_drivers() {
         pkg install -y mesa-vulkan-icd-panfrost 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-panfrost: installed (Mali)"
     else
         log "mesa-vulkan-icd-panfrost: not available in repository, using system default"
+    fi
+    
+    # Check Mesa version (if installed in Termux)
+    if pkg list-installed 2>/dev/null | grep -q "^mesa"; then
+        local mesa_version=$(pkg list-installed 2>/dev/null | grep "^mesa" | head -1 | awk '{print $2}')
+        msg info "Termux Mesa version: $mesa_version"
+    fi
+    
+    # Check Vulkan version using vulkaninfo (if available)
+    if command -v vulkaninfo &>/dev/null; then
+        local vulkan_version=$(vulkaninfo 2>/dev/null | grep "Vulkan Instance Version" | awk '{print $4}')
+        if [[ -n "$vulkan_version" ]]; then
+            msg info "Vulkan API version: $vulkan_version"
+        fi
     fi
 }
 
