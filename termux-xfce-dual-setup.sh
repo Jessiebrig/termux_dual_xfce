@@ -247,7 +247,6 @@ prompt_for_username() {
         echo -n "Enter username: " > /dev/tty
         read -r input < /dev/tty
         input=$(echo "$input" | xargs)  # Trim leading/trailing whitespace
-        log "DEBUG: User input: '$input'"
         
         if [[ -z "$input" ]]; then
             msg error "Username cannot be empty" > /dev/tty
@@ -256,7 +255,6 @@ prompt_for_username() {
         
         # Clean username
         username=$(echo "$input" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g' | sed 's/^[^a-z]\+//')
-        log "DEBUG: Cleaned username: '$username'"
         
         if [[ -z "$username" ]]; then
             msg error "No valid characters. Use letters, numbers, hyphens, underscores" > /dev/tty
@@ -267,7 +265,6 @@ prompt_for_username() {
             echo -e "${C_WARN}⚠${C_RESET} Formatted to: $username" > /dev/tty
             echo -n "Accept? (y/N): " > /dev/tty
             read -r confirm < /dev/tty
-            log "DEBUG: User confirmation: '$confirm'"
             [[ ! "$confirm" =~ ^[Yy]$ ]] && continue
         fi
         
@@ -281,34 +278,22 @@ get_debian_username() {
     local USERNAME_FILE="$HOME/.xfce_debian_username"
     local username=""
     
-    log "DEBUG: get_debian_username() called"
-    
     if [[ -f "$USERNAME_FILE" ]]; then
         username=$(tr -d '\n\r\t ' < "$USERNAME_FILE" | xargs)
-        log "DEBUG: Found saved username file: $username"
     elif [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
-        log "DEBUG: Debian directory exists, checking for existing user"
         # Detect existing username from Debian home directory
         username=$(basename "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/"* 2>/dev/null | grep -v "^root$" | head -n1)
-        log "DEBUG: Detected username from Debian home: '$username'"
         if [[ -n "$username" && "$username" != "*" ]]; then
-            log "DEBUG: Detected existing Debian user: $username"
             echo "$username" > "$USERNAME_FILE"
-            log "DEBUG: Saved detected username to file"
         else
-            log "DEBUG: No valid Debian user found, prompting user"
             username=$(prompt_for_username)
             echo -n "$username" > "$USERNAME_FILE"
-            log "DEBUG: Saved username to file"
         fi
     else
-        log "DEBUG: Fresh install, no Debian directory, prompting user"
         username=$(prompt_for_username)
         echo -n "$username" > "$USERNAME_FILE"
-        log "DEBUG: Saved username to file"
     fi
     
-    log "DEBUG: Returning username: '$username'"
     echo "$username"
 }
 
@@ -554,7 +539,6 @@ install_debian_user_tools() {
 
 # System verification
 verify_system() {
-    log "FUNCTION: verify_system() - Starting system verification"
     echo ""
     
     local errors=0
@@ -647,8 +631,6 @@ verify_system() {
 
 # Main installation
 main() {
-    log "FUNCTION: main() - Starting main installation"
-    
     clear
     
     # Display script file info
