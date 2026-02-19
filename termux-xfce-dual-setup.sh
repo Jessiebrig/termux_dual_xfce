@@ -240,7 +240,7 @@ install_optional_vulkan_drivers() {
 # Get or create Debian username
 get_debian_username() {
     local USERNAME_FILE="$HOME/.xfce_debian_username"
-    local username
+    local username=""
     
     if [[ -f "$USERNAME_FILE" ]]; then
         username=$(cat "$USERNAME_FILE" | tr -d '[:space:]')
@@ -254,7 +254,7 @@ get_debian_username() {
         fi
     fi
     
-    if [[ -z "$username" ]] && [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
+    if [[ -z "$username" ]] && [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home" ]]; then
         username=$(basename "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/"* 2>/dev/null | grep -v "^root$" | head -n1)
         if [[ -n "$username" && "$username" != "*" && "$username" =~ ^[a-z][a-z0-9_-]*$ ]]; then
             msg ok "Detected existing Debian user: $username"
