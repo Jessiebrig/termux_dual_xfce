@@ -259,16 +259,16 @@ get_debian_username() {
             log "DEBUG: Saved detected username to file"
         else
             log "DEBUG: No valid Debian user found, prompting user"
-            echo ""
-            echo "Username requirements: lowercase letters, numbers, hyphens, underscores (must start with letter)"
-            echo "Example: 'Device@123' becomes 'device123'"
+            echo "" > /dev/tty
+            echo "Username requirements: lowercase letters, numbers, hyphens, underscores (must start with letter)" > /dev/tty
+            echo "Example: 'Device@123' becomes 'device123'" > /dev/tty
             while true; do
                 echo -n "Enter username: " > /dev/tty
                 read -r input < /dev/tty
                 log "DEBUG: User input: '$input'"
                 
                 if [[ -z "$input" ]]; then
-                    msg error "Username cannot be empty"
+                    msg error "Username cannot be empty" > /dev/tty
                     continue
                 fi
                 
@@ -277,7 +277,7 @@ get_debian_username() {
                 log "DEBUG: Cleaned username: '$username'"
                 
                 if [[ -z "$username" ]]; then
-                    msg error "No valid characters. Use letters, numbers, hyphens, underscores"
+                    msg error "No valid characters. Use letters, numbers, hyphens, underscores" > /dev/tty
                     continue
                 fi
                 
@@ -296,16 +296,16 @@ get_debian_username() {
         fi
     else
         log "DEBUG: Fresh install, no Debian directory, prompting user"
-        echo ""
-        echo "Username requirements: lowercase letters, numbers, hyphens, underscores (must start with letter)"
-        echo "Example: 'Device@123' becomes 'device123'"
+        echo "" > /dev/tty
+        echo "Username requirements: lowercase letters, numbers, hyphens, underscores (must start with letter)" > /dev/tty
+        echo "Example: 'Device@123' becomes 'device123'" > /dev/tty
         while true; do
             echo -n "Enter username: " > /dev/tty
             read -r input < /dev/tty
             log "DEBUG: User input: '$input'"
             
             if [[ -z "$input" ]]; then
-                msg error "Username cannot be empty"
+                msg error "Username cannot be empty" > /dev/tty
                 continue
             fi
             
@@ -314,7 +314,7 @@ get_debian_username() {
             log "DEBUG: Cleaned username: '$username'"
             
             if [[ -z "$username" ]]; then
-                msg error "No valid characters. Use letters, numbers, hyphens, underscores"
+                msg error "No valid characters. Use letters, numbers, hyphens, underscores" > /dev/tty
                 continue
             fi
             
