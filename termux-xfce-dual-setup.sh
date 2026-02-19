@@ -130,6 +130,39 @@ download_conky_config() {
     download_from_repo ".conkyrc" "$target_path" "Conky configuration for $env_name"
 }
 
+# Check Debian proot errors and display helpful messages
+# Note: This function only warns users about known issues but does NOT stop installation
+check_debian_proot_errors() {
+    local output="$1"
+    local exit_status="$2"
+    local operation="$3"  # "update" or "upgrade"
+    
+    [[ $exit_status -eq 0 ]] && return 0
+    
+    # Check for mesa-vulkan-drivers issues (non-critical, warn only)
+    if echo "$output" | grep -qi "mesa-vulkan-drivers"; then
+        msg warn "Detected mesa-vulkan-drivers dependency issue${operation:+ during $operation}"
+        echo ""
+        echo "Why this occurs: GPU drivers (old or new) might not work properly in proot."
+        echo "The currently installed mesa-vulkan-drivers has unsatisfied dependencies and"
+        echo "was likely installed via 'dpkg --force'. You may ignore this error if you"
+        echo "intentionally installed an old package that provides better performance compared"
+        echo "to the latest driver."
+        echo ""
+        echo "Fix: You can always reinstall the latest version via:"
+        echo "  proot-distro login debian"
+        echo "  sudo apt --fix-broken install"
+        echo "  sudo apt remove mesa-vulkan-drivers"
+        echo "  sudo apt autoremove"
+        echo "  sudo apt install mesa-vulkan-drivers"
+        [[ "$operation" == "upgrade" ]] && echo "  sudo apt upgrade -y"
+        echo ""
+        return 0  # Don't stop installation, this is non-critical
+    fi
+    
+    return 0
+}
+
 # Install Termux package helper
 install_pkg() {
     local pkg_name="$1"
@@ -154,11 +187,22 @@ install_deb_pkg() {
         return 0
     else
         msg info "Installing Debian package: $pkg_name..."
-        if proot-distro login debian --shared-tmp -- apt install -y "$pkg_name"; then
-            return 0
-        else
-            return 1
+        local install_output
+        install_output=$(proot-distro login debian --shared-tmp -- apt install -y "$pkg_name" 2>&1 | tee -a "$LOG_FILE")
+        local exit_code=$?
+        
+        if [[ $exit_code -ne 0 ]]; then
+            if echo "$install_output" | grep -qi "unmet dependencies\|depends:\|broken packages"; then
+                msg error "Failed to install $pkg_name due to unsatisfied dependencies"
+                echo "$install_output" | grep -i "depends:\|unmet" | head -5
+                echo "Try: proot-distro login debian -- apt --fix-broken install"
+                return 1
+            else
+                msg error "Failed to install $pkg_name"
+                return 1
+            fi
         fi
+        return 0
     fi
 }
 
@@ -376,8 +420,11 @@ setup_debian_proot() {
     fi
     
     msg info "Configuring Debian environment..."
-    proot-distro login debian --shared-tmp -- apt update
-    proot-distro login debian --shared-tmp -- apt upgrade -y
+    
+    # Run apt update and upgrade, capture errors
+    local apt_output=$(proot-distro login debian --shared-tmp -- bash -c "apt update && apt upgrade -y" 2>&1)
+    local apt_status=$?
+    check_debian_proot_errors "$apt_output" "$apt_status" "update/upgrade"
     
     msg info "Installing Debian packages..."
     for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 firefox-esr chromium htop curl

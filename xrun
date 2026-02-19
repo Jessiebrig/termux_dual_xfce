@@ -315,8 +315,7 @@ apply_proot_driver() {
         fi
         echo -e "${YELLOW}[Debian XFCE]${NC} Using Turnip Basic (Adreno 6XX/7XX)" | tee -a ~/xfce_gpu.log
         log "Proot: Launching XFCE with Turnip Basic"
-        local turnip_env=$(get_turnip_env "basic")
-        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 $turnip_env dbus-launch --exit-with-session xfce4-session
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
     elif [[ "$driver_choice" == "3" ]]; then
         local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
         if [[ ! -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
@@ -327,8 +326,7 @@ apply_proot_driver() {
         fi
         echo -e "${YELLOW}[Debian XFCE]${NC} Using Turnip Optimized (Adreno 6XX/7XX)" | tee -a ~/xfce_gpu.log
         log "Proot: Launching XFCE with Turnip Optimized"
-        local turnip_env=$(get_turnip_env "optimized")
-        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 $turnip_env dbus-launch --exit-with-session xfce4-session
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
     elif [[ "$driver_choice" == "4" ]]; then
         local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
         if [[ ! -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
@@ -339,8 +337,7 @@ apply_proot_driver() {
         fi
         echo -e "${YELLOW}[Debian XFCE]${NC} Using Turnip Aggressive (Adreno 6XX/7XX)" | tee -a ~/xfce_gpu.log
         log "Proot: Launching XFCE with Turnip Aggressive"
-        local turnip_env=$(get_turnip_env "aggressive")
-        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 $turnip_env dbus-launch --exit-with-session xfce4-session
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform,sysmem ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
     elif [[ "$driver_choice" == "5" ]]; then
         echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL Basic" | tee -a ~/xfce_gpu.log
         log "Proot: Launching XFCE with VIRGL Basic"
@@ -586,7 +583,12 @@ manage_gpu_drivers() {
             
             # Check if Turnip is installed
             if [[ -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
-                echo "└─ Custom Turnip: Installed (24.1.0)"
+                local turnip_ver=$(proot-distro login debian --shared-tmp -- dpkg-query -W -f='${Version}' mesa-vulkan-kgsl 2>/dev/null || echo "unknown")
+                if [[ "$turnip_ver" != "unknown" ]]; then
+                    echo "└─ Custom Turnip: Installed ($turnip_ver)"
+                else
+                    echo "└─ Custom Turnip: Installed (version unknown)"
+                fi
             else
                 echo "└─ Custom Turnip: Not installed"
             fi
@@ -624,6 +626,17 @@ install_turnip_driver() {
     echo "This will install custom Turnip driver (24.1.0) for Adreno GPUs."
     echo "The driver will be pinned to prevent automatic updates."
     echo ""
+    
+    local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
+    
+    # Check if already installed
+    local existing_ver=$(proot-distro login debian --shared-tmp -- dpkg-query -W -f='${Version}' mesa-vulkan-kgsl 2>/dev/null || echo "")
+    if [[ -n "$existing_ver" ]]; then
+        echo "Current Turnip version: $existing_ver"
+        echo "This will reinstall/downgrade to version 24.1.0"
+        echo ""
+    fi
+    
     echo -n "Continue? (y/N): " > /dev/tty
     read -r confirm < /dev/tty
     
@@ -633,13 +646,13 @@ install_turnip_driver() {
         return
     fi
     
-    local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
     local deb_file="mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb"
     local temp_deb="/tmp/$deb_file"
+    local branch="${INSTALLER_BRANCH:-main}"
     
     echo ""
-    echo "Downloading Turnip driver..."
-    if ! curl -L "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/$deb_file" -o "$temp_deb"; then
+    echo "Downloading Turnip driver from branch: $branch"
+    if ! curl -L "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$branch/$deb_file" -o "$temp_deb"; then
         echo -e "${YELLOW}Download failed.${NC}"
         echo -n "Press Enter to continue..." > /dev/tty
         read < /dev/tty
@@ -647,7 +660,8 @@ install_turnip_driver() {
     fi
     
     echo "Installing Turnip driver..."
-    if proot-distro login debian --shared-tmp -- bash -c "dpkg -i --force-depends $temp_deb && apt-mark hold mesa-vulkan-kgsl && rm -f $temp_deb"; then
+    # Remove existing if present, then install
+    if proot-distro login debian --shared-tmp -- bash -c "apt-mark unhold mesa-vulkan-kgsl 2>/dev/null; dpkg -i --force-depends $temp_deb && apt-mark hold mesa-vulkan-kgsl && rm -f $temp_deb"; then
         echo ""
         echo -e "${GREEN}✓ Turnip driver installed successfully!${NC}"
         echo "Driver version: 24.1.0 (held from updates)"
