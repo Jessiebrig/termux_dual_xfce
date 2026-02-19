@@ -684,6 +684,8 @@ main() {
     # Get username
     local username
     username=$(get_debian_username)
+    echo ""
+    msg info "Debian username: $username"
     
     # Clear any stale locks
     rm -f "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" 2>/dev/null
