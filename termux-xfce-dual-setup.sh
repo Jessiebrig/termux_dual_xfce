@@ -505,7 +505,7 @@ EOF
     if [[ ! -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
         msg info "Installing Turnip GPU driver for Debian..."
         proot-distro login debian --shared-tmp -- bash -c "
-            curl -L 'https://drive.google.com/uc?export=download&id=1f4pLvjDFcBPhViXGIFoRE3Xc8HWoiqG-' -o mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
+            curl -L 'https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/${BRANCH}/mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb' -o mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
             apt install -y ./mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
             rm mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb
         "
