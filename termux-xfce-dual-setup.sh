@@ -677,6 +677,7 @@ main() {
     read -r
     
     # Get username
+    local username
     username=$(get_debian_username)
     if [[ -f "$HOME/.xfce_debian_username" ]]; then
         msg ok "Using saved username: $username"
