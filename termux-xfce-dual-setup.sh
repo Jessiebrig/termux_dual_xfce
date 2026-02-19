@@ -283,7 +283,7 @@ get_debian_username() {
     log "DEBUG: get_debian_username() called"
     
     if [[ -f "$USERNAME_FILE" ]]; then
-        username=$(cat "$USERNAME_FILE")
+        username=$(tr -d '\n\r' < "$USERNAME_FILE")
         log "DEBUG: Found saved username file: $username"
         msg ok "Using saved username: $username"
     elif [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
