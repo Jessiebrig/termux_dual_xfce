@@ -341,13 +341,21 @@ setup_debian_proot() {
     proot-distro login debian --shared-tmp -- apt upgrade -y
     
     msg info "Installing Debian packages..."
-    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 firefox-esr chromium htop glmark2 curl
+    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 firefox-esr chromium htop curl
     do
         if ! install_deb_pkg "$deb_pkg"; then
             msg error "Failed to install Debian package: $deb_pkg"
             exit 1
         fi
     done
+    
+    # Install glmark2-x11 separately (may conflict with glmark2)
+    msg info "Installing glmark2-x11 for Debian..."
+    if proot-distro login debian --shared-tmp -- apt install -y glmark2-x11 2>&1 | tee -a "$LOG_FILE"; then
+        msg ok "glmark2-x11 installed successfully"
+    else
+        msg warn "glmark2-x11 installation failed (non-critical, skipping...)"
+    fi
     
     install_deb_pkg conky-std || msg warn "Failed to install conky-std (non-critical)"
     msg ok "Debian packages installed successfully"
