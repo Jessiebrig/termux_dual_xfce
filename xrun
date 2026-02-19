@@ -506,6 +506,30 @@ start_debian() {
 # Helper Functions
 #==============================================================================
 
+# Get GPU info helper
+get_gpu_info() {
+    local egl=$(getprop ro.hardware.egl)
+    local vulkan=$(getprop ro.hardware.vulkan)
+    if [[ "$egl" == "$vulkan" ]]; then
+        echo "$egl"
+    else
+        echo "$egl / $vulkan"
+    fi
+}
+
+# Detect GPU type (adreno, mali, or unknown)
+detect_gpu_type() {
+    local gpu_info=$(get_gpu_info | tr '[:upper:]' '[:lower:]')
+    
+    if [[ "$gpu_info" =~ adreno|freedreno|qcom|qualcomm ]]; then
+        echo "adreno"
+    elif [[ "$gpu_info" =~ mali|panfrost|midgard|bifrost ]]; then
+        echo "mali"
+    else
+        echo "unknown"
+    fi
+}
+
 get_debian_username() {
     basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*
 }
@@ -518,6 +542,212 @@ get_file_date() {
     else
         echo "Unknown"
     fi
+}
+
+#==============================================================================
+# GPU Driver Management
+#==============================================================================
+
+manage_gpu_drivers() {
+    while true; do
+        clear
+        echo "=== GPU Driver Management ==="
+        echo ""
+        
+        # Show GPU hardware info
+        local gpu_type=$(detect_gpu_type)
+        local gpu_model=$(getprop ro.hardware.vulkan 2>/dev/null || get_gpu_info)
+        echo "GPU Hardware: $gpu_model ($gpu_type)"
+        
+        # Show Termux Mesa version
+        if pkg list-installed 2>/dev/null | grep -q "^mesa"; then
+            local mesa_version=$(pkg list-installed 2>/dev/null | grep "^mesa" | head -1 | awk '{print $2}')
+            echo "Termux Mesa: $mesa_version"
+        fi
+        
+        # Show Vulkan API version
+        if command -v vulkaninfo &>/dev/null; then
+            local vulkan_version=$(vulkaninfo 2>/dev/null | grep -i "vulkan" | grep -i "version" | head -1 | awk '{print $NF}')
+            if [[ -n "$vulkan_version" ]]; then
+                echo "Vulkan API: $vulkan_version"
+            fi
+        fi
+        
+        echo ""
+        
+        # Show Debian proot driver status (if Adreno)
+        if [[ "$gpu_type" == "adreno" ]]; then
+            echo "Debian Proot Driver Status:"
+            local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
+            
+            # Check current Mesa version
+            local mesa_ver=$(proot-distro login debian --shared-tmp -- dpkg-query -W -f='${Version}' mesa-vulkan-drivers 2>/dev/null || echo "not installed")
+            echo "├─ Current: mesa-vulkan-drivers $mesa_ver"
+            
+            # Check if Turnip is installed
+            if [[ -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
+                echo "└─ Custom Turnip: Installed (24.1.0)"
+            else
+                echo "└─ Custom Turnip: Not installed"
+            fi
+            echo ""
+        fi
+        
+        # Show options
+        echo "Options:"
+        echo "  1) Install Turnip driver (24.1.0, Adreno optimized)"
+        echo "  2) Restore default Mesa drivers"
+        echo "  3) Run GPU benchmark (glmark2)"
+        echo "  0) Back to main menu"
+        echo ""
+        echo -n "Choice: " > /dev/tty
+        read choice < /dev/tty
+        
+        case $choice in
+            1) install_turnip_driver ;;
+            2) restore_default_drivers ;;
+            3) run_benchmark ;;
+            0) return ;;
+            *)
+                echo ""
+                echo -e "${YELLOW}Invalid option.${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+install_turnip_driver() {
+    echo ""
+    echo "=== Install Turnip Driver ==="
+    echo ""
+    echo "This will install custom Turnip driver (24.1.0) for Adreno GPUs."
+    echo "The driver will be pinned to prevent automatic updates."
+    echo ""
+    echo -n "Continue? (y/N): " > /dev/tty
+    read -r confirm < /dev/tty
+    
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "Cancelled."
+        sleep 1
+        return
+    fi
+    
+    local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
+    local deb_file="mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb"
+    local temp_deb="/tmp/$deb_file"
+    
+    echo ""
+    echo "Downloading Turnip driver..."
+    if ! curl -L "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/$deb_file" -o "$temp_deb"; then
+        echo -e "${YELLOW}Download failed.${NC}"
+        echo -n "Press Enter to continue..." > /dev/tty
+        read < /dev/tty
+        return
+    fi
+    
+    echo "Installing Turnip driver..."
+    if proot-distro login debian --shared-tmp -- bash -c "dpkg -i --force-depends $temp_deb && apt-mark hold mesa-vulkan-kgsl && rm -f $temp_deb"; then
+        echo ""
+        echo -e "${GREEN}✓ Turnip driver installed successfully!${NC}"
+        echo "Driver version: 24.1.0 (held from updates)"
+    else
+        echo ""
+        echo -e "${YELLOW}Installation failed.${NC}"
+    fi
+    
+    echo ""
+    echo -n "Press Enter to continue..." > /dev/tty
+    read < /dev/tty
+}
+
+restore_default_drivers() {
+    echo ""
+    echo "=== Restore Default Mesa Drivers ==="
+    echo ""
+    echo "This will remove custom Turnip driver and reinstall default Mesa."
+    echo ""
+    echo -n "Continue? (y/N): " > /dev/tty
+    read -r confirm < /dev/tty
+    
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "Cancelled."
+        sleep 1
+        return
+    fi
+    
+    echo ""
+    echo "Removing custom Turnip driver..."
+    proot-distro login debian --shared-tmp -- bash -c "apt-mark unhold mesa-vulkan-kgsl 2>/dev/null; apt remove --purge -y mesa-vulkan-kgsl 2>/dev/null; apt install -y mesa-vulkan-drivers"
+    
+    echo ""
+    echo -e "${GREEN}✓ Default Mesa drivers restored.${NC}"
+    echo ""
+    echo -n "Press Enter to continue..." > /dev/tty
+    read < /dev/tty
+}
+
+run_benchmark() {
+    echo ""
+    echo "=== GPU Benchmark (Debian Proot) ==="
+    echo ""
+    
+    # Check if glmark2-x11 is installed
+    if ! proot-distro login debian --shared-tmp -- command -v glmark2 &>/dev/null; then
+        echo "glmark2-x11 not installed in Debian proot."
+        echo -n "Install now? (y/N): " > /dev/tty
+        read -r install_choice < /dev/tty
+        
+        if [[ "$install_choice" =~ ^[Yy]$ ]]; then
+            echo "Installing glmark2-x11..."
+            proot-distro login debian --shared-tmp -- apt install -y glmark2-x11
+        else
+            echo "Benchmark cancelled."
+            echo -n "Press Enter to continue..." > /dev/tty
+            read < /dev/tty
+            return
+        fi
+    fi
+    
+    echo "Select benchmark mode:"
+    echo "  1) Default (quick test)"
+    echo "  2) With Turnip env vars (if Turnip installed)"
+    echo "  0) Cancel"
+    echo ""
+    echo -n "Choice: " > /dev/tty
+    read bench_choice < /dev/tty
+    
+    case $bench_choice in
+        1)
+            echo ""
+            echo "Running glmark2 in Debian proot..."
+            echo "This will take about 30-60 seconds."
+            echo ""
+            proot-distro login debian --shared-tmp -- env DISPLAY=:0 glmark2
+            ;;
+        2)
+            local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
+            if [[ ! -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
+                echo ""
+                echo "Turnip driver not installed. Using default mode."
+                sleep 2
+                proot-distro login debian --shared-tmp -- env DISPLAY=:0 glmark2
+            else
+                echo ""
+                echo "Running glmark2 with Turnip optimizations..."
+                echo "This will take about 30-60 seconds."
+                echo ""
+                proot-distro login debian --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform glmark2
+            fi
+            ;;
+        0)
+            return
+            ;;
+    esac
+    
+    echo ""
+    echo -n "Press Enter to continue..." > /dev/tty
+    read < /dev/tty
 }
 
 #==============================================================================
@@ -590,6 +820,9 @@ show_menu() {
         echo -e "  ${GREEN}4${NC} - Kill Termux-X11"
         echo "      Stop all X11 sessions"
         echo ""
+        echo -e "  ${GREEN}5${NC} - GPU Drivers"
+        echo "      Manage Debian Turnip driver (Adreno optimization)"
+        echo ""
         echo -e "${CYAN}Setup:${NC}"
         echo -e "  ${GREEN}9${NC} - Check for Updates"
         echo "      Download xrun and main script from your selected branch"
@@ -625,6 +858,9 @@ show_menu() {
                 echo "Done."
                 echo -n "Press Enter to continue..." > /dev/tty
                 read < /dev/tty
+                ;;
+            5)
+                manage_gpu_drivers
                 ;;
             9)
                 run_initializer
