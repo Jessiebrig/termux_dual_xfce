@@ -198,6 +198,13 @@ install_optional_vulkan_drivers() {
         log "vulkan-loader-android: not available in repository, using system default"
     fi
     
+    # Check and install vulkan-tools (for vulkaninfo command)
+    if pkg install --dry-run vulkan-tools 2>/dev/null | grep -q "vulkan-tools"; then
+        pkg install -y vulkan-tools 2>&1 | tee -a "$LOG_FILE" && msg ok "vulkan-tools: installed"
+    else
+        log "vulkan-tools: not available in repository"
+    fi
+    
     # Check and install mesa-vulkan-icd-freedreno-dri3 (Adreno)
     if pkg install --dry-run mesa-vulkan-icd-freedreno-dri3 2>/dev/null | grep -q "mesa-vulkan-icd-freedreno-dri3"; then
         pkg install -y mesa-vulkan-icd-freedreno-dri3 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-freedreno-dri3: installed (Adreno)"
@@ -220,10 +227,14 @@ install_optional_vulkan_drivers() {
     
     # Check Vulkan version using vulkaninfo (if available)
     if command -v vulkaninfo &>/dev/null; then
-        local vulkan_version=$(vulkaninfo 2>/dev/null | grep "Vulkan Instance Version" | awk '{print $4}')
+        local vulkan_version=$(vulkaninfo 2>/dev/null | grep -i "vulkan" | grep -i "version" | head -1 | awk '{print $NF}')
         if [[ -n "$vulkan_version" ]]; then
             msg info "Vulkan API version: $vulkan_version"
+        else
+            log "vulkaninfo command found but no version detected"
         fi
+    else
+        log "vulkaninfo not installed (install with: pkg install vulkan-tools)"
     fi
 }
 
