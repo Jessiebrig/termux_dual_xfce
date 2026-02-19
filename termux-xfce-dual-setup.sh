@@ -211,32 +211,63 @@ get_debian_username() {
     local username
     
     if [[ -f "$USERNAME_FILE" ]]; then
-        username=$(cat "$USERNAME_FILE")
-        msg ok "Using saved username: $username"
-    elif [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
+        username=$(cat "$USERNAME_FILE" | tr -d '[:space:]')
+        if [[ "$username" =~ ^[a-z][a-z0-9_-]*$ ]]; then
+            msg ok "Using saved username: $username"
+        else
+            msg warn "Saved username '$username' is invalid, requesting new username..."
+            rm -f "$USERNAME_FILE"
+            username=""
+        fi
+    fi
+    
+    if [[ -z "$username" ]] && [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
         username=$(basename "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/"* 2>/dev/null | grep -v "^root$" | head -n1)
-        if [[ -n "$username" && "$username" != "*" ]]; then
+        if [[ -n "$username" && "$username" != "*" && "$username" =~ ^[a-z][a-z0-9_-]*$ ]]; then
             msg ok "Detected existing Debian user: $username"
             echo "$username" > "$USERNAME_FILE"
         else
-            echo ""
-            echo -n "Enter username for Debian proot: " > /dev/tty
-            read -r username < /dev/tty
-            if [[ -z "$username" ]]; then
-                msg error "Username cannot be empty"
-                exit 1
-            fi
-            echo "$username" > "$USERNAME_FILE"
+            username=""
         fi
-    else
+    fi
+    
+    if [[ -z "$username" ]]; then
         echo ""
-        echo -n "Enter username for Debian proot: " > /dev/tty
-        read -r username < /dev/tty
-        if [[ -z "$username" ]]; then
-            msg error "Username cannot be empty"
-            exit 1
-        fi
-        echo "$username" > "$USERNAME_FILE"
+        echo "Username requirements: lowercase letters, numbers, hyphens, underscores (must start with letter)"
+        while true; do
+            echo -n "Enter username for Debian proot: " > /dev/tty
+            read -r input < /dev/tty
+            input=$(echo "$input" | tr -d '[:space:]')
+            
+            if [[ -z "$input" ]]; then
+                msg error "Username cannot be empty"
+                continue
+            fi
+            
+            # Clean username: lowercase, remove invalid chars
+            username=$(echo "$input" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
+            
+            # Ensure it starts with a letter
+            username=$(echo "$username" | sed 's/^[^a-z]*//')
+            
+            if [[ -z "$username" ]]; then
+                msg error "No valid characters found. Please use letters, numbers, hyphens, or underscores"
+                continue
+            fi
+            
+            if [[ "$input" != "$username" ]]; then
+                echo ""
+                msg warn "Input contained invalid characters. Cleaned username: $username"
+                echo -n "Use '$username'? (Y/n): " > /dev/tty
+                read -r confirm < /dev/tty
+                if [[ "$confirm" =~ ^[Nn]$ ]]; then
+                    continue
+                fi
+            fi
+            
+            echo "$username" > "$USERNAME_FILE"
+            break
+        done
     fi
     
     echo "$username"
@@ -611,6 +642,7 @@ main() {
     read -r
     
     # Get username
+    msg info "Setting up Debian user account..."
     username=$(get_debian_username)
     
     # Clear any stale locks
