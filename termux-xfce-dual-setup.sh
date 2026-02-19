@@ -246,6 +246,7 @@ prompt_for_username() {
     while true; do
         echo -n "Enter username: " > /dev/tty
         read -r input < /dev/tty
+        input=$(echo "$input" | xargs)  # Trim leading/trailing whitespace
         log "DEBUG: User input: '$input'"
         
         if [[ -z "$input" ]]; then
@@ -283,7 +284,7 @@ get_debian_username() {
     log "DEBUG: get_debian_username() called"
     
     if [[ -f "$USERNAME_FILE" ]]; then
-        username=$(tr -d '\n\r' < "$USERNAME_FILE")
+        username=$(tr -d '\n\r\t ' < "$USERNAME_FILE" | xargs)
         log "DEBUG: Found saved username file: $username"
         msg ok "Using saved username: $username"
     elif [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
@@ -298,13 +299,13 @@ get_debian_username() {
         else
             log "DEBUG: No valid Debian user found, prompting user"
             username=$(prompt_for_username)
-            echo "$username" > "$USERNAME_FILE"
+            echo -n "$username" > "$USERNAME_FILE"
             log "DEBUG: Saved username to file"
         fi
     else
         log "DEBUG: Fresh install, no Debian directory, prompting user"
         username=$(prompt_for_username)
-        echo "$username" > "$USERNAME_FILE"
+        echo -n "$username" > "$USERNAME_FILE"
         log "DEBUG: Saved username to file"
     fi
     
