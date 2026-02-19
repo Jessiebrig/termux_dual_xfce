@@ -286,14 +286,13 @@ get_debian_username() {
     if [[ -f "$USERNAME_FILE" ]]; then
         username=$(tr -d '\n\r\t ' < "$USERNAME_FILE" | xargs)
         log "DEBUG: Found saved username file: $username"
-        msg ok "Using saved username: $username"
     elif [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
         log "DEBUG: Debian directory exists, checking for existing user"
         # Detect existing username from Debian home directory
         username=$(basename "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/"* 2>/dev/null | grep -v "^root$" | head -n1)
         log "DEBUG: Detected username from Debian home: '$username'"
         if [[ -n "$username" && "$username" != "*" ]]; then
-            msg ok "Detected existing Debian user: $username"
+            log "DEBUG: Detected existing Debian user: $username"
             echo "$username" > "$USERNAME_FILE"
             log "DEBUG: Saved detected username to file"
         else
