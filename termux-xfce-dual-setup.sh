@@ -242,35 +242,50 @@ get_debian_username() {
     local USERNAME_FILE="$HOME/.xfce_debian_username"
     local username=""
     
+    log "DEBUG: get_debian_username() called"
+    log "DEBUG: USERNAME_FILE=$USERNAME_FILE"
+    
     if [[ -f "$USERNAME_FILE" ]]; then
+        log "DEBUG: Username file exists"
         username=$(cat "$USERNAME_FILE" | tr -d '[:space:]')
+        log "DEBUG: Read username from file: '$username'"
         if [[ -n "$username" ]] && [[ "$username" =~ ^[a-z][a-z0-9_-]*$ ]]; then
+            log "DEBUG: Username is valid, returning: $username"
             echo "$username"
             return 0
         else
             if [[ -z "$username" ]]; then
                 msg warn "Saved username file is empty, requesting new username..."
+                log "DEBUG: Username file is empty"
             else
                 msg warn "Saved username '$username' is invalid, requesting new username..."
+                log "DEBUG: Username '$username' is invalid"
             fi
             rm -f "$USERNAME_FILE"
             username=""
         fi
+    else
+        log "DEBUG: Username file does not exist"
     fi
     
     if [[ -z "$username" ]] && [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home" ]]; then
+        log "DEBUG: Checking for existing Debian user"
         username=$(basename "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/"* 2>/dev/null | grep -v "^root$" | head -n1)
+        log "DEBUG: Found user in Debian home: '$username'"
         if [[ -n "$username" && "$username" != "*" && "$username" =~ ^[a-z][a-z0-9_-]*$ ]]; then
             msg ok "Detected existing Debian user: $username"
             echo "$username" > "$USERNAME_FILE"
+            log "DEBUG: Saved detected username to file"
             echo "$username"
             return 0
         else
+            log "DEBUG: No valid existing Debian user found"
             username=""
         fi
     fi
     
     if [[ -z "$username" ]]; then
+        log "DEBUG: Prompting user for username"
         echo ""
         echo "Username requirements: lowercase letters, numbers, hyphens, underscores (must start with letter)"
         echo "Example: 'Device@123' will become 'device123'"
@@ -278,6 +293,7 @@ get_debian_username() {
             echo -n "Enter username: " > /dev/tty
             read -r input < /dev/tty
             input=$(echo "$input" | tr -d '[:space:]')
+            log "DEBUG: User input: '$input'"
             
             if [[ -z "$input" ]]; then
                 msg error "Username cannot be empty"
@@ -286,9 +302,11 @@ get_debian_username() {
             
             # Clean username: lowercase, remove invalid chars
             username=$(echo "$input" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
+            log "DEBUG: After cleaning: '$username'"
             
             # Ensure it starts with a letter (remove leading non-letters only)
             username=$(echo "$username" | sed 's/^[^a-z]\+//')
+            log "DEBUG: After removing leading non-letters: '$username'"
             
             if [[ -z "$username" ]]; then
                 msg error "No valid characters found. Please use letters, numbers, hyphens, or underscores"
@@ -300,16 +318,19 @@ get_debian_username() {
                 msg warn "Invalid characters removed. Cleaned username: $username"
                 echo -n "Accept '$username' and continue? (Y/n): " > /dev/tty
                 read -r confirm < /dev/tty
+                log "DEBUG: User confirmation: '$confirm'"
                 if [[ "$confirm" =~ ^[Nn]$ ]]; then
                     continue
                 fi
             fi
             
             echo "$username" > "$USERNAME_FILE"
+            log "DEBUG: Saved username to file: $username"
             break
         done
     fi
     
+    log "DEBUG: Returning username: $username"
     echo "$username"
 }
 
