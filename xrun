@@ -106,14 +106,15 @@ prompt_termux_gpu() {
         echo "  13) Turnip via ZINK Optimized" > /dev/tty
         echo "  14) Turnip via ZINK Aggressive" > /dev/tty
         echo "  15) Disable Vulkan (force software)" > /dev/tty
+        echo "  16) Turnip ZINK (persistent env, just run glmark2)" > /dev/tty
     fi
     echo "" > /dev/tty
-    echo -n "Choice [0-15]: " > /dev/tty
+    echo -n "Choice [0-16]: " > /dev/tty
     read -r gpu_choice < /dev/tty
     gpu_choice=$(echo "$gpu_choice" | tr -cd '0-9')
     [[ -z "$gpu_choice" ]] && gpu_choice="0"
-    # Handle 10-15 as special cases
-    if [[ "$gpu_choice" =~ ^(10|11|12|13|14|15)$ ]]; then
+    # Handle 10-16 as special cases
+    if [[ "$gpu_choice" =~ ^(10|11|12|13|14|15|16)$ ]]; then
         echo "$gpu_choice"
     else
         echo "$gpu_choice"
@@ -487,7 +488,7 @@ start_debian_xfce() {
     fi
     
     # Handle options 11-15 (Proot test modes with different GPU configs)
-    if [[ "$termux_gpu_choice" =~ ^(11|12|13|14|15)$ ]]; then
+    if [[ "$termux_gpu_choice" =~ ^(11|12|13|14|15|16)$ ]]; then
         log "Test Proot mode $termux_gpu_choice: Custom GPU configuration"
         echo ""
         
@@ -536,6 +537,11 @@ start_debian_xfce() {
                 echo -e "${YELLOW}[Test Proot 15]${NC} Disable Vulkan (force software)" | tee -a ~/xfce_gpu.log
                 log "Test Proot 15: VK_ICD_FILENAMES=/dev/null LIBGL_ALWAYS_SOFTWARE=1"
                 proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 VK_ICD_FILENAMES=/dev/null LIBGL_ALWAYS_SOFTWARE=1 dbus-launch --exit-with-session xfce4-session
+                ;;
+            16)
+                echo -e "${GREEN}[Test Proot 16]${NC} Turnip ZINK (persistent env, just run glmark2)" | tee -a ~/xfce_gpu.log
+                log "Test Proot 16: Persistent MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform"
+                proot-distro login debian --user $username --shared-tmp -- bash -c "export DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform && dbus-launch --exit-with-session xfce4-session"
                 ;;
         esac
         return
