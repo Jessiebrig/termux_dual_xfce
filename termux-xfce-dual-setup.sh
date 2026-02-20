@@ -113,7 +113,7 @@ download_from_repo() {
         branch="main"
     fi
     
-    msg info "Downloading $description from $branch..."
+    msg info "Downloading $description from GitHub repo branch: $branch"
     if curl -L "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$branch/$file_path" -o "$target_path"; then
         msg ok "$description downloaded successfully"
         return 0
@@ -291,18 +291,22 @@ get_debian_username() {
     local username=""
     
     if [[ -f "$USERNAME_FILE" ]]; then
+        msg info "Found existing username in: .xfce_debian_username"
         username=$(tr -d '\n\r\t ' < "$USERNAME_FILE" | xargs)
     elif [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
         # Detect existing username from Debian home directory
         username=$(basename "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/"* 2>/dev/null | grep -v "^root$" | head -n1)
         if [[ -n "$username" && "$username" != "*" ]]; then
+            msg info "Saving username to: .xfce_debian_username"
             echo "$username" > "$USERNAME_FILE"
         else
             username=$(prompt_for_username)
+            msg info "Saving username to: .xfce_debian_username"
             echo -n "$username" > "$USERNAME_FILE"
         fi
     else
         username=$(prompt_for_username)
+        msg info "Saving username to: .xfce_debian_username"
         echo -n "$username" > "$USERNAME_FILE"
     fi
     
