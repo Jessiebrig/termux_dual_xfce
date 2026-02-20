@@ -408,6 +408,14 @@ EOF
     fi
 }
 
+# Update Debian packages
+update_debian_packages() {
+    msg info "Running apt update and upgrade..."
+    local apt_output=$(proot-distro login debian --shared-tmp -- bash -c "apt update && apt upgrade -y" 2>&1)
+    local apt_status=$?
+    check_debian_proot_errors "$apt_output" "$apt_status" "update/upgrade"
+}
+
 # Install and setup Debian proot
 setup_debian_proot() {
     local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
@@ -419,12 +427,7 @@ setup_debian_proot() {
         proot-distro install debian
     fi
     
-    msg info "Configuring Debian environment..."
-    
-    # Run apt update and upgrade, capture errors
-    local apt_output=$(proot-distro login debian --shared-tmp -- bash -c "apt update && apt upgrade -y" 2>&1)
-    local apt_status=$?
-    check_debian_proot_errors "$apt_output" "$apt_status" "update/upgrade"
+    update_debian_packages
     
     msg info "Installing Debian packages..."
     for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 firefox-esr chromium htop curl
@@ -669,6 +672,9 @@ main() {
     setup_debian_user "$username"
     setup_debian_xfce_config "$username"
     install_debian_user_tools
+    
+    # Final update check
+    update_debian_packages
     
     # Completion message
     echo ""
