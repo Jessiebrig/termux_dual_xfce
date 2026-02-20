@@ -784,12 +784,14 @@ install_turnip_driver() {
     echo "Downloading Turnip driver..."
     echo "URL: $release_url"
     
-    if ! curl -fL "$release_url" -o "$temp_deb" 2>&1; then
+    if ! curl -fL "$release_url" -o "$temp_deb"; then
         echo ""
         echo -e "${YELLOW}Download failed. Possible reasons:${NC}"
         echo "  - Network connection issue"
         echo "  - Release not found in repository"
+        echo "  - GitHub release may not exist yet"
         echo ""
+        rm -f "$temp_deb"
         echo -n "Press Enter to continue..." > /dev/tty
         read < /dev/tty
         return
