@@ -84,12 +84,20 @@ prompt_termux_gpu() {
     echo "" > /dev/tty
     echo "  --- Advanced ---" > /dev/tty
     echo "  9) Custom (enter your own commands)" > /dev/tty
+    if [[ "$for_proot" == "true" ]]; then
+        echo "  10) Test Proot (quick launch, no GPU)" > /dev/tty
+    fi
     echo "" > /dev/tty
-    echo -n "Choice [0-9]: " > /dev/tty
+    echo -n "Choice [0-10]: " > /dev/tty
     read -r gpu_choice < /dev/tty
     gpu_choice=$(echo "$gpu_choice" | tr -cd '0-9')
     [[ -z "$gpu_choice" ]] && gpu_choice="0"
-    echo "$gpu_choice"
+    # Handle 10 as special case
+    if [[ "$gpu_choice" == "10" ]]; then
+        echo "10"
+    else
+        echo "$gpu_choice"
+    fi
 }
 
 apply_termux_gpu() {
@@ -425,6 +433,38 @@ start_debian_xfce() {
     
     username=$(get_debian_username)
     log "start_debian_xfce: Debian username=$username"
+    
+    # Handle option 10 (Test Proot - pure software rendering)
+    if [[ "$termux_gpu_choice" == "10" ]]; then
+        log "Test Proot mode: Pure software rendering (no server, no GPU)"
+        echo ""
+        echo -e "${YELLOW}[Test Proot]${NC} Software rendering only (no GPU acceleration)"
+        
+        if ! pgrep -f "termux-x11" > /dev/null; then
+            kill -9 $(pgrep -f "termux.x11") 2>/dev/null
+            
+            if [[ "$(getprop ro.product.manufacturer | tr '[:upper:]' '[:lower:]')" == "samsung" ]]; then
+                LD_PRELOAD=/system/lib64/libskcodec.so pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
+            else
+                pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
+            fi
+            
+            export PULSE_SERVER=127.0.0.1
+            export XDG_RUNTIME_DIR=${TMPDIR}
+            mkdir -p "$XDG_RUNTIME_DIR"
+            
+            termux-x11 :0 >/dev/null &
+            sleep 3
+            
+            am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
+            sleep 1
+        fi
+        
+        echo -e "${YELLOW}[Debian XFCE]${NC} Software rendering mode (LLVMPIPE)" | tee -a ~/xfce_gpu.log
+        log "Test Proot: Launching proot with software rendering"
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
+        return
+    fi
     
     # Auto-detect proot driver based on Termux choice
     if [[ "$termux_gpu_choice" == "1" ]]; then
