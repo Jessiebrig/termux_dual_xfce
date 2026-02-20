@@ -9,6 +9,19 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 #==============================================================================
+# Branch Configuration
+#==============================================================================
+CONFIG_BRANCH="main"
+if [[ -f "$HOME/.xfce_branch" ]]; then
+    CONFIG_BRANCH=$(cat "$HOME/.xfce_branch")
+fi
+
+# Set INSTALLER_BRANCH if empty
+if [[ -z "${INSTALLER_BRANCH:-}" ]]; then
+    export INSTALLER_BRANCH="$CONFIG_BRANCH"
+fi
+
+#==============================================================================
 # Logging Setup
 #==============================================================================
 LOG_FILE="$HOME/xfce_gpu.log"
@@ -765,7 +778,8 @@ install_turnip_driver() {
     
     local deb_file="mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb"
     local temp_deb="/tmp/$deb_file"
-    local branch="${INSTALLER_BRANCH:-main}"
+    
+    local branch="$INSTALLER_BRANCH"
     
     echo ""
     echo "Downloading Turnip driver from branch: $branch"

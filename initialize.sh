@@ -129,6 +129,9 @@ fi
 
 echo ""
 
+# Save selected branch to config file
+echo "$SELECTED_BRANCH" > "$HOME/.xfce_branch"
+
 # Prompt user to run setup or xrun
 echo "Tip: Setup script skips already installed packages but will run from the start."
 echo -n "Run setup? (y/N): " > /dev/tty
