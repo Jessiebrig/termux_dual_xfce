@@ -786,22 +786,23 @@ install_turnip_driver() {
     echo ""
     
     # Download with progress and follow redirects
-    if curl -L --progress-bar "$release_url" -o "$temp_deb"; then
-        echo ""
-    else
-        local curl_exit=$?
+    curl -L --progress-bar "$release_url" -o "$temp_deb"
+    local curl_exit=$?
+    
+    if [[ $curl_exit -ne 0 ]]; then
         echo ""
         echo -e "${YELLOW}Download failed (curl exit code: $curl_exit)${NC}"
         echo ""
         echo "Troubleshooting:"
+        echo "  - Exit code 23: Write error (check disk space)"
         echo "  - Try: pkg install ca-certificates"
         echo "  - Check internet connection"
-        echo "  - Verify URL in browser works"
         rm -f "$temp_deb"
         echo -n "Press Enter to continue..." > /dev/tty
         read < /dev/tty
         return
     fi
+    echo ""
     
     # Verify download
     if [[ ! -f "$temp_deb" ]] || [[ ! -s "$temp_deb" ]]; then
