@@ -67,8 +67,7 @@ prompt_termux_gpu() {
     else
         local gpu_info="$egl / $vulkan"
     fi
-    echo -e "${GREEN}[Termux XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log > /dev/tty
-    echo "" > /dev/tty
+    
     echo "Select GPU acceleration mode:" > /dev/tty
     
     if [[ "$for_proot" == "true" ]]; then
@@ -294,6 +293,7 @@ apply_termux_gpu() {
 #==============================================================================
 
 prompt_proot_driver() {
+    clear
     local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
     local gpu_server="${1:-false}"
     
@@ -403,6 +403,8 @@ apply_proot_driver() {
 
 start_xfce() {
     log "start_xfce: Starting Native Termux XFCE"
+    echo -e "${GREEN}[Termux XFCE]${NC} GPU: $(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)" | tee -a ~/xfce_gpu.log
+    echo "" > /dev/tty
     gpu_choice=$(prompt_termux_gpu "false")  # Show all options including Turnip
     log "start_xfce: User selected GPU mode $gpu_choice"
     
@@ -435,7 +437,6 @@ start_debian_xfce() {
     log "start_debian_xfce: Starting Debian XFCE"
     echo -e "${GREEN}[Debian XFCE]${NC} GPU: $(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)" | tee -a ~/xfce_gpu.log
     echo ""
-    echo "Step 1: Termux GPU (server)"
     termux_gpu_choice=$(prompt_termux_gpu "true")  # Hide Turnip, change option 0 text
     log "start_debian_xfce: Termux GPU choice=$termux_gpu_choice"
     
@@ -488,7 +489,6 @@ start_debian_xfce() {
     if [[ "$termux_gpu_choice" == "1" ]]; then
         # Termux Auto was selected - show 2nd prompt
         echo ""
-        echo -e "${CYAN}Step 2: Proot GPU (driver)${NC}"
         proot_driver_choice=$(prompt_proot_driver "$gpu_server")
         log "Proot selection after Termux auto: $proot_driver_choice"
         
