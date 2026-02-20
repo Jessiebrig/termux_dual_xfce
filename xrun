@@ -98,16 +98,23 @@ prompt_termux_gpu() {
     echo "  --- Advanced ---" > /dev/tty
     echo "  9) Custom (enter your own commands)" > /dev/tty
     if [[ "$for_proot" == "true" ]]; then
-        echo "  10) Test Proot (quick launch, no GPU)" > /dev/tty
+        echo "" > /dev/tty
+        echo "  --- Proot Test Options (no Termux server) ---" > /dev/tty
+        echo "  10) Test Proot (default, no GPU env vars)" > /dev/tty
+        echo "  11) Force LLVMPIPE (software, ignore Turnip)" > /dev/tty
+        echo "  12) Turnip via ZINK Basic" > /dev/tty
+        echo "  13) Turnip via ZINK Optimized" > /dev/tty
+        echo "  14) Turnip via ZINK Aggressive" > /dev/tty
+        echo "  15) Disable Vulkan (force software)" > /dev/tty
     fi
     echo "" > /dev/tty
-    echo -n "Choice [0-10]: " > /dev/tty
+    echo -n "Choice [0-15]: " > /dev/tty
     read -r gpu_choice < /dev/tty
     gpu_choice=$(echo "$gpu_choice" | tr -cd '0-9')
     [[ -z "$gpu_choice" ]] && gpu_choice="0"
-    # Handle 10 as special case
-    if [[ "$gpu_choice" == "10" ]]; then
-        echo "10"
+    # Handle 10-15 as special cases
+    if [[ "$gpu_choice" =~ ^(10|11|12|13|14|15)$ ]]; then
+        echo "$gpu_choice"
     else
         echo "$gpu_choice"
     fi
@@ -476,6 +483,61 @@ start_debian_xfce() {
         echo -e "${YELLOW}[Debian XFCE]${NC} Software rendering mode (LLVMPIPE)" | tee -a ~/xfce_gpu.log
         log "Test Proot: Launching proot with software rendering"
         proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
+        return
+    fi
+    
+    # Handle options 11-15 (Proot test modes with different GPU configs)
+    if [[ "$termux_gpu_choice" =~ ^(11|12|13|14|15)$ ]]; then
+        log "Test Proot mode $termux_gpu_choice: Custom GPU configuration"
+        echo ""
+        
+        if ! pgrep -f "termux-x11" > /dev/null; then
+            kill -9 $(pgrep -f "termux.x11") 2>/dev/null
+            
+            if [[ "$(getprop ro.product.manufacturer | tr '[:upper:]' '[:lower:]')" == "samsung" ]]; then
+                LD_PRELOAD=/system/lib64/libskcodec.so pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
+            else
+                pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
+            fi
+            
+            export PULSE_SERVER=127.0.0.1
+            export XDG_RUNTIME_DIR=${TMPDIR}
+            mkdir -p "$XDG_RUNTIME_DIR"
+            
+            termux-x11 :0 >/dev/null &
+            sleep 3
+            
+            am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
+            sleep 1
+        fi
+        
+        case "$termux_gpu_choice" in
+            11)
+                echo -e "${YELLOW}[Test Proot 11]${NC} Force LLVMPIPE (software, ignore Turnip)" | tee -a ~/xfce_gpu.log
+                log "Test Proot 11: LIBGL_ALWAYS_SOFTWARE=1"
+                proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 LIBGL_ALWAYS_SOFTWARE=1 dbus-launch --exit-with-session xfce4-session
+                ;;
+            12)
+                echo -e "${GREEN}[Test Proot 12]${NC} Turnip via ZINK Basic" | tee -a ~/xfce_gpu.log
+                log "Test Proot 12: Turnip ZINK Basic"
+                proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
+                ;;
+            13)
+                echo -e "${GREEN}[Test Proot 13]${NC} Turnip via ZINK Optimized" | tee -a ~/xfce_gpu.log
+                log "Test Proot 13: Turnip ZINK Optimized"
+                proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 dbus-launch --exit-with-session xfce4-session
+                ;;
+            14)
+                echo -e "${GREEN}[Test Proot 14]${NC} Turnip via ZINK Aggressive" | tee -a ~/xfce_gpu.log
+                log "Test Proot 14: Turnip ZINK Aggressive"
+                proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform,sysmem ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 dbus-launch --exit-with-session xfce4-session
+                ;;
+            15)
+                echo -e "${YELLOW}[Test Proot 15]${NC} Disable Vulkan (force software)" | tee -a ~/xfce_gpu.log
+                log "Test Proot 15: VK_ICD_FILENAMES=/dev/null LIBGL_ALWAYS_SOFTWARE=1"
+                proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 VK_ICD_FILENAMES=/dev/null LIBGL_ALWAYS_SOFTWARE=1 dbus-launch --exit-with-session xfce4-session
+                ;;
+        esac
         return
     fi
     
@@ -1001,7 +1063,7 @@ run_initializer() {
     echo ""
     echo -e "${GREEN}Downloading initializer...${NC}"
     
-    if curl -L https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o "$tmp"; then
+    if curl -L --progress-bar https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o "$tmp"; then
         chmod +x "$tmp"
         exec bash "$tmp"
     else

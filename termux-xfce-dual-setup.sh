@@ -114,7 +114,7 @@ download_from_repo() {
     fi
     
     msg info "Downloading $description from GitHub repo branch: $branch"
-    if curl -L "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$branch/$file_path" -o "$target_path"; then
+    if curl -L --progress-bar "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$branch/$file_path" -o "$target_path"; then
         msg ok "$description downloaded successfully"
         return 0
     else
@@ -506,7 +506,7 @@ install_debian_user_tools() {
     if ! proot-distro login debian --shared-tmp -- dpkg -l eza 2>/dev/null | grep -q "^ii"; then
         proot-distro login debian --shared-tmp -- bash -c "
             mkdir -p /etc/apt/keyrings
-            curl -L https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
+            curl -L --progress-bar https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
             echo 'deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main' | tee /etc/apt/sources.list.d/gierens.list
             chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
             apt update
@@ -522,7 +522,7 @@ install_debian_user_tools() {
         msg ok "starship already installed, skipping..."
     else
         msg info "Installing starship..."
-        proot-distro login debian --shared-tmp -- bash -c "curl -L https://starship.rs/install.sh | sh -s -- -y" 2>&1 | tee -a "$LOG_FILE" || msg warn "Failed to install starship (non-critical)"
+        proot-distro login debian --shared-tmp -- bash -c "curl -L --progress-bar https://starship.rs/install.sh | sh -s -- -y" 2>&1 | tee -a "$LOG_FILE" || msg warn "Failed to install starship (non-critical)"
     fi
     
     msg ok "User tools installation complete"
