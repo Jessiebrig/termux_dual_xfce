@@ -746,6 +746,7 @@ manage_gpu_drivers() {
 }
 
 install_turnip_driver() {
+    clear
     echo ""
     echo "=== Install Turnip Driver ==="
     echo ""
@@ -846,6 +847,7 @@ install_turnip_driver() {
 }
 
 restore_default_drivers() {
+    clear
     echo ""
     echo "=== Restore Default Mesa Drivers ==="
     echo ""
@@ -1063,6 +1065,7 @@ show_menu() {
         echo ""
         echo -n "Select option [0-9]: " > /dev/tty
         read choice < /dev/tty
+        clear
         
         case $choice in
             1)
@@ -1107,7 +1110,6 @@ show_menu() {
                 ;;
         esac
     done
-    clear
 }
 
 #==============================================================================
