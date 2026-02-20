@@ -287,22 +287,11 @@ apply_termux_gpu() {
 
 prompt_proot_driver() {
     local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
-    local has_turnip=false
-    [[ -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]] && has_turnip=true
     
     echo "" > /dev/tty
     echo -e "${CYAN}[Debian Proot]${NC} Select GPU driver:" > /dev/tty
     echo "  0) Software rendering (LLVMPIPE)" > /dev/tty
     echo "  1) Auto-detect (recommended)" > /dev/tty
-    echo "" > /dev/tty
-    if [[ "$has_turnip" == "true" ]]; then
-        echo "  --- Direct GPU (Adreno 6XX/7XX, driver installed, BEST ~198) ---" > /dev/tty
-    else
-        echo "  --- Direct GPU (Adreno 6XX/7XX, driver NOT installed) ---" > /dev/tty
-    fi
-    echo "  2) Turnip Basic (direct Vulkan, no server needed)" > /dev/tty
-    echo "  3) Turnip Optimized (+ threading, descriptor caching)" > /dev/tty
-    echo "  4) Turnip Aggressive (experimental, best for gaming)" > /dev/tty
     echo "" > /dev/tty
     echo "  --- Universal (works on all GPUs) ---" > /dev/tty
     echo "  5) VIRGL Basic (requires VIRGL server from Step 1)" > /dev/tty
@@ -310,10 +299,14 @@ prompt_proot_driver() {
     echo "  7) ZINK Basic (requires ZINK server from Step 1)" > /dev/tty
     echo "  8) ZINK Optimized (+ threading, requires ZINK server)" > /dev/tty
     echo "" > /dev/tty
+    echo "  --- Software Rendering (no server needed) ---" > /dev/tty
+    echo "  11) Force LLVMPIPE (ignore any GPU drivers)" > /dev/tty
+    echo "  15) Disable Vulkan + Force LLVMPIPE" > /dev/tty
+    echo "" > /dev/tty
     echo "  --- Advanced ---" > /dev/tty
     echo "  9) Custom (enter your own environment variables)" > /dev/tty
     echo "" > /dev/tty
-    echo -n "Choice [0-9]: " > /dev/tty
+    echo -n "Choice [0-15]: " > /dev/tty
     read -r driver_choice < /dev/tty
     driver_choice=$(echo "$driver_choice" | tr -cd '0-9')
     [[ -z "$driver_choice" ]] && driver_choice="0"
@@ -334,39 +327,6 @@ apply_proot_driver() {
         echo -e "${YELLOW}[Debian XFCE]${NC} Auto-detect mode (should not reach here)" | tee -a ~/xfce_gpu.log
         log "Proot: Auto-detect fallback to VIRGL Basic"
         apply_proot_driver "5" "$username"
-    elif [[ "$driver_choice" == "2" ]]; then
-        local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
-        if [[ ! -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
-            echo -e "${YELLOW}[Debian XFCE]${NC} Turnip driver not installed, falling back to VIRGL Basic" | tee -a ~/xfce_gpu.log
-            log "Proot: Turnip driver missing, using VIRGL Basic fallback"
-            apply_proot_driver "5" "$username"
-            return
-        fi
-        echo -e "${YELLOW}[Debian XFCE]${NC} Using Turnip Basic (Adreno 6XX/7XX)" | tee -a ~/xfce_gpu.log
-        log "Proot: Launching XFCE with Turnip Basic"
-        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
-    elif [[ "$driver_choice" == "3" ]]; then
-        local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
-        if [[ ! -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
-            echo -e "${YELLOW}[Debian XFCE]${NC} Turnip driver not installed, falling back to VIRGL Basic" | tee -a ~/xfce_gpu.log
-            log "Proot: Turnip driver missing, using VIRGL Basic fallback"
-            apply_proot_driver "5" "$username"
-            return
-        fi
-        echo -e "${YELLOW}[Debian XFCE]${NC} Using Turnip Optimized (Adreno 6XX/7XX)" | tee -a ~/xfce_gpu.log
-        log "Proot: Launching XFCE with Turnip Optimized"
-        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
-    elif [[ "$driver_choice" == "4" ]]; then
-        local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
-        if [[ ! -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
-            echo -e "${YELLOW}[Debian XFCE]${NC} Turnip driver not installed, falling back to VIRGL Basic" | tee -a ~/xfce_gpu.log
-            log "Proot: Turnip driver missing, using VIRGL Basic fallback"
-            apply_proot_driver "5" "$username"
-            return
-        fi
-        echo -e "${YELLOW}[Debian XFCE]${NC} Using Turnip Aggressive (Adreno 6XX/7XX)" | tee -a ~/xfce_gpu.log
-        log "Proot: Launching XFCE with Turnip Aggressive"
-        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform,sysmem ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
     elif [[ "$driver_choice" == "5" ]]; then
         echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL Basic" | tee -a ~/xfce_gpu.log
         log "Proot: Launching XFCE with VIRGL Basic"
@@ -383,6 +343,14 @@ apply_proot_driver() {
         echo -e "${GREEN}[Debian XFCE]${NC} Using ZINK Optimized" | tee -a ~/xfce_gpu.log
         log "Proot: Launching XFCE with ZINK Optimized"
         proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
+    elif [[ "$driver_choice" == "11" ]]; then
+        echo -e "${YELLOW}[Debian XFCE]${NC} Force LLVMPIPE (software rendering)" | tee -a ~/xfce_gpu.log
+        log "Proot: Launching XFCE with LIBGL_ALWAYS_SOFTWARE=1"
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 LIBGL_ALWAYS_SOFTWARE=1 dbus-launch --exit-with-session xfce4-session
+    elif [[ "$driver_choice" == "15" ]]; then
+        echo -e "${YELLOW}[Debian XFCE]${NC} Disable Vulkan + Force LLVMPIPE" | tee -a ~/xfce_gpu.log
+        log "Proot: Launching XFCE with VK_ICD_FILENAMES=/dev/null LIBGL_ALWAYS_SOFTWARE=1"
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 VK_ICD_FILENAMES=/dev/null LIBGL_ALWAYS_SOFTWARE=1 dbus-launch --exit-with-session xfce4-session
     elif [[ "$driver_choice" == "9" ]]; then
         echo -e "${YELLOW}[Debian XFCE]${NC} Custom Mode (Advanced)" | tee -a ~/xfce_gpu.log
         log "Proot: Custom mode selected"
@@ -533,9 +501,9 @@ start_debian_xfce() {
         local vulkan=$(getprop ro.hardware.vulkan)
         
         if echo "$egl $vulkan" | grep -iq "adreno"; then
-            proot_driver_choice="4"  # Turnip Aggressive for Adreno
-            echo -e "${GREEN}✓ Adreno detected → Proot using Turnip Aggressive (Option 4)${NC}" | tee -a ~/xfce_gpu.log
-            log "Proot auto-detect: Adreno, using Turnip Aggressive (4)"
+            proot_driver_choice="6"  # VIRGL Optimized for Adreno
+            echo -e "${GREEN}✓ Adreno detected → Proot using VIRGL Optimized (Option 6)${NC}" | tee -a ~/xfce_gpu.log
+            log "Proot auto-detect: Adreno, using VIRGL Optimized (6)"
         elif echo "$egl $vulkan" | grep -iq "mali"; then
             proot_driver_choice="6"  # VIRGL Optimized
             echo -e "${GREEN}✓ Mali detected → Using VIRGL Optimized (Option 6)${NC}" | tee -a ~/xfce_gpu.log
