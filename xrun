@@ -89,9 +89,9 @@ prompt_termux_gpu() {
     fi
     
     echo "  --- Universal (works on all GPUs) ---" > /dev/tty
-    echo "  5) VIRGL Android (server for proot)" > /dev/tty
+    echo "  5) VIRGL Android" > /dev/tty
     echo "  6) VIRGL Android + ANGLE (Mali optimized)" > /dev/tty
-    echo "  7) ZINK Android (server for proot)" > /dev/tty
+    echo "  7) ZINK Android" > /dev/tty
     echo "  8) ZINK EGL Surfaceless (advanced)" > /dev/tty
     echo "" > /dev/tty
     echo "  --- Advanced ---" > /dev/tty
@@ -333,6 +333,7 @@ prompt_proot_driver() {
         driver_choice="0"
     fi
     
+    log "prompt_proot_driver: User selected driver choice $driver_choice (gpu_server=$gpu_server)"
     echo "$driver_choice"
 }
 
@@ -1106,6 +1107,7 @@ show_menu() {
                 ;;
         esac
     done
+    clear
 }
 
 #==============================================================================
