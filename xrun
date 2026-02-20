@@ -729,6 +729,15 @@ install_turnip_driver() {
     
     local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
     
+    # Check if Debian is installed
+    if [[ ! -d "$DEBIAN_ROOT" ]]; then
+        echo -e "${YELLOW}Error: Debian proot not found.${NC}"
+        echo "Please install Debian first."
+        echo -n "Press Enter to continue..." > /dev/tty
+        read < /dev/tty
+        return
+    fi
+    
     # Check if already installed
     local existing_ver=$(proot-distro login debian --shared-tmp -- dpkg-query -W -f='${Version}' mesa-vulkan-drivers 2>/dev/null || echo "")
     if [[ "$existing_ver" == *"24.1.0"* ]]; then
@@ -738,6 +747,10 @@ install_turnip_driver() {
     elif [[ -n "$existing_ver" ]]; then
         echo "Current Mesa version: $existing_ver"
         echo "This will replace with custom Turnip 24.1.0"
+        echo ""
+    else
+        echo "No Mesa drivers currently installed."
+        echo "This will install custom Turnip 24.1.0"
         echo ""
     fi
     
@@ -756,22 +769,41 @@ install_turnip_driver() {
     
     echo ""
     echo "Downloading Turnip driver from branch: $branch"
-    if ! curl -L "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$branch/$deb_file" -o "$temp_deb"; then
-        echo -e "${YELLOW}Download failed.${NC}"
+    echo "URL: https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$branch/$deb_file"
+    
+    if ! curl -fL "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$branch/$deb_file" -o "$temp_deb" 2>&1; then
+        echo ""
+        echo -e "${YELLOW}Download failed. Possible reasons:${NC}"
+        echo "  - Network connection issue"
+        echo "  - File not found in repository"
+        echo "  - Branch '$branch' doesn't exist"
+        echo ""
         echo -n "Press Enter to continue..." > /dev/tty
         read < /dev/tty
         return
     fi
     
+    # Verify download
+    if [[ ! -f "$temp_deb" ]] || [[ ! -s "$temp_deb" ]]; then
+        echo -e "${YELLOW}Error: Downloaded file is empty or missing.${NC}"
+        rm -f "$temp_deb"
+        echo -n "Press Enter to continue..." > /dev/tty
+        read < /dev/tty
+        return
+    fi
+    
+    echo "Download complete. File size: $(du -h "$temp_deb" | cut -f1)"
     echo "Installing Turnip driver..."
+    
     # Install and hold mesa-vulkan-drivers at this version
-    if proot-distro login debian --shared-tmp -- bash -c "dpkg -i --force-depends $temp_deb && apt-mark hold mesa-vulkan-drivers && rm -f $temp_deb"; then
+    if proot-distro login debian --shared-tmp -- bash -c "dpkg -i --force-depends $temp_deb && apt-mark hold mesa-vulkan-drivers && rm -f $temp_deb" 2>&1; then
         echo ""
         echo -e "${GREEN}✓ Turnip driver installed successfully!${NC}"
         echo "Driver version: 24.1.0 (held from updates)"
     else
         echo ""
-        echo -e "${YELLOW}Installation failed.${NC}"
+        echo -e "${YELLOW}Installation failed. Check error messages above.${NC}"
+        rm -f "$temp_deb"
     fi
     
     echo ""
