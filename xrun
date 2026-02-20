@@ -105,7 +105,11 @@ apply_termux_gpu() {
             log "Launching XFCE in software rendering mode"
             dbus-launch --exit-with-session xfce4-session &
         else
-            log "Software rendering: Skipping XFCE launch"
+            # Server-only mode for debian_xfce: start VIRGL server as fallback
+            log "Software rendering in server-only mode: Starting VIRGL server as fallback"
+            echo -e "${YELLOW}Note: Starting VIRGL server for proot compatibility${NC}" | tee -a ~/xfce_gpu.log
+            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
+            sleep 2
         fi
     elif [[ "$gpu_choice" == "1" ]]; then
         local egl=$(getprop ro.hardware.egl)
@@ -448,9 +452,17 @@ start_debian_xfce() {
         # No Termux GPU - proceed to 2nd prompt
         echo ""
         echo -e "${CYAN}Step 2: Proot GPU (driver)${NC}"
-        echo -e "${YELLOW}Note: No Termux server will run. Proot will use direct GPU access if Turnip is selected.${NC}"
+        echo -e "${YELLOW}Note: VIRGL server started as fallback. Choose VIRGL (5-6) or Turnip (2-4) for proot.${NC}"
         proot_driver_choice=$(prompt_proot_driver)
-        log "Proot manual selection: $proot_driver_choice"
+        
+        # If user chose 0 for proot too, default to VIRGL since server is running
+        if [[ "$proot_driver_choice" == "0" ]]; then
+            echo -e "${YELLOW}⚠ Defaulting to VIRGL Basic (5) since VIRGL server is running${NC}"
+            proot_driver_choice="5"
+            log "Both GPU choices were 0, using VIRGL Basic (5) with fallback server"
+        else
+            log "Proot manual selection: $proot_driver_choice"
+        fi
     else
         # Manual selection (5-9), show prompt
         echo ""
