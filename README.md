@@ -9,6 +9,7 @@ A lightweight script to set up native XFCE desktop environment and Debian proot 
 - **No Root Required**: Works on non-rooted Android devices
 - **Dual Desktop Environment**: Native Termux XFCE + Debian proot XFCE
 - **Hardware Acceleration**: GPU support with auto-detection (Adreno/Mali), Vulkan drivers, and real-time status logging
+- **Experimental GPU Driver Management**: Custom Turnip driver installation for Adreno GPUs (tested on Xperia 5 II)
 - **Dynamic Branch Selection**: Choose stable or experimental versions for testing new features
 - **Fast Installation**: Streamlined setup with essential packages only
 - **Modern CLI Tools**: Starship prompt, Fastfetch (auto-displays on startup), eza, bat
@@ -89,6 +90,7 @@ Interactive menu with numbered options for all commands below.
 - `xrun debian` - Enter Debian proot shell (interactive, DISPLAY pre-configured)
 
 ### System Tools
+- `xrun gpu` - Manage GPU drivers (experimental, Adreno optimization)
 - `xrun kill_termux_x11` - Stop all Termux-X11 sessions
 - `xrun update` - Run initializer to update xrun and setup scripts
 
@@ -96,6 +98,32 @@ Interactive menu with numbered options for all commands below.
 - `~/xfce_gpu.log` - GPU acceleration status and runtime logs
 - `~/xfce_install.log` - Installation summary log
 - `~/xfce_install_full.txt` - Full installation output (optional, saved on request)
+
+## GPU Driver Management (Experimental)
+
+⚠️ **Experimental Feature - Adreno GPUs Only**
+
+Manage custom Turnip drivers for improved GPU performance in Debian proot environment.
+
+### Tested Configuration
+- **Device**: Sony Xperia 5 II (XQ-AS42)
+- **Chipset**: Qualcomm Snapdragon 865
+- **GPU**: Adreno 650
+
+### Features
+- Install custom Turnip driver (Mesa 24.1.0) for Adreno GPUs
+- Restore default Mesa drivers
+- Run GPU benchmarks (glmark2)
+- Real-time driver status monitoring
+
+### Usage
+```bash
+xrun gpu
+```
+
+Or select option 5 from the interactive menu.
+
+**Note**: This feature is experimental and specifically optimized for Adreno GPUs. Results may vary on other devices.
 
 ## 🙏 Credits & Acknowledgments
 
