@@ -503,6 +503,55 @@ start_debian() {
 # Helper Functions
 #==============================================================================
 
+# Get GPU model name (e.g., "Adreno 650")
+get_gpu_model() {
+    # Try multiple methods to get GPU model
+    local gpu_model=""
+    
+    # Method 1: Check ro.soc.model or ro.chipname
+    gpu_model=$(getprop ro.soc.model 2>/dev/null)
+    if [[ -n "$gpu_model" && "$gpu_model" != "" ]]; then
+        echo "$gpu_model"
+        return
+    fi
+    
+    # Method 2: Check ro.hardware.chipname
+    gpu_model=$(getprop ro.hardware.chipname 2>/dev/null)
+    if [[ -n "$gpu_model" && "$gpu_model" != "" ]]; then
+        echo "$gpu_model"
+        return
+    fi
+    
+    # Method 3: Check ro.board.platform
+    gpu_model=$(getprop ro.board.platform 2>/dev/null)
+    if [[ -n "$gpu_model" && "$gpu_model" != "" ]]; then
+        echo "$gpu_model"
+        return
+    fi
+    
+    # Method 4: Parse from /proc/cpuinfo
+    if [[ -f /proc/cpuinfo ]]; then
+        gpu_model=$(grep -i "hardware" /proc/cpuinfo | head -1 | cut -d: -f2 | xargs)
+        if [[ -n "$gpu_model" ]]; then
+            echo "$gpu_model"
+            return
+        fi
+    fi
+    
+    # Method 5: Check vulkaninfo output
+    if command -v vulkaninfo &>/dev/null; then
+        gpu_model=$(vulkaninfo 2>/dev/null | grep -i "deviceName" | head -1 | cut -d= -f2 | xargs)
+        if [[ -n "$gpu_model" ]]; then
+            echo "$gpu_model"
+            return
+        fi
+    fi
+    
+    # Fallback: Use driver name
+    gpu_model=$(getprop ro.hardware.vulkan 2>/dev/null || get_gpu_info)
+    echo "$gpu_model"
+}
+
 # Get GPU info helper
 get_gpu_info() {
     local egl=$(getprop ro.hardware.egl)
@@ -553,7 +602,7 @@ manage_gpu_drivers() {
         
         # Show GPU hardware info
         local gpu_type=$(detect_gpu_type)
-        local gpu_model=$(getprop ro.hardware.vulkan 2>/dev/null || get_gpu_info)
+        local gpu_model=$(get_gpu_model)
         echo "GPU Hardware: $gpu_model ($gpu_type)"
         
         # Show Termux Mesa version
@@ -597,6 +646,7 @@ manage_gpu_drivers() {
         echo "  1) Install Turnip driver (24.1.0, Adreno optimized)"
         echo "  2) Restore default Mesa drivers"
         echo "  3) Run GPU benchmark (glmark2)"
+        echo "  9) Debug GPU detection"
         echo "  0) Back to main menu"
         echo ""
         echo -n "Choice: " > /dev/tty
@@ -606,6 +656,7 @@ manage_gpu_drivers() {
             1) install_turnip_driver ;;
             2) restore_default_drivers ;;
             3) run_benchmark ;;
+            9) debug_gpu_detection ;;
             0) return ;;
             *)
                 echo ""
@@ -761,6 +812,53 @@ run_benchmark() {
     esac
     
     echo ""
+    echo -n "Press Enter to continue..." > /dev/tty
+    read < /dev/tty
+}
+
+debug_gpu_detection() {
+    echo ""
+    echo "=== GPU Detection Debug ==="
+    echo ""
+    echo "Testing all detection methods:"
+    echo ""
+    
+    echo "Method 1 - ro.soc.model:"
+    getprop ro.soc.model 2>/dev/null || echo "  (not available)"
+    echo ""
+    
+    echo "Method 2 - ro.hardware.chipname:"
+    getprop ro.hardware.chipname 2>/dev/null || echo "  (not available)"
+    echo ""
+    
+    echo "Method 3 - ro.board.platform:"
+    getprop ro.board.platform 2>/dev/null || echo "  (not available)"
+    echo ""
+    
+    echo "Method 4 - /proc/cpuinfo (Hardware line):"
+    grep -i "hardware" /proc/cpuinfo 2>/dev/null | head -1 || echo "  (not available)"
+    echo ""
+    
+    echo "Method 5 - vulkaninfo deviceName:"
+    if command -v vulkaninfo &>/dev/null; then
+        vulkaninfo 2>/dev/null | grep -i "deviceName" | head -1 || echo "  (not available)"
+    else
+        echo "  (vulkaninfo not installed)"
+    fi
+    echo ""
+    
+    echo "Fallback - ro.hardware.vulkan:"
+    getprop ro.hardware.vulkan 2>/dev/null || echo "  (not available)"
+    echo ""
+    
+    echo "Fallback - ro.hardware.egl:"
+    getprop ro.hardware.egl 2>/dev/null || echo "  (not available)"
+    echo ""
+    
+    echo "Current result from get_gpu_model():"
+    echo "  $(get_gpu_model)"
+    echo ""
+    
     echo -n "Press Enter to continue..." > /dev/tty
     read < /dev/tty
 }
