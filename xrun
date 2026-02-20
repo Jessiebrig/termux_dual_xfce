@@ -521,17 +521,17 @@ start_debian_xfce() {
             12)
                 echo -e "${GREEN}[Test Proot 12]${NC} Turnip via ZINK Basic" | tee -a ~/xfce_gpu.log
                 log "Test Proot 12: Turnip ZINK Basic"
-                proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
+                proot-distro login debian --user $username --shared-tmp -- bash -c "export DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform && dbus-launch --exit-with-session xfce4-session"
                 ;;
             13)
                 echo -e "${GREEN}[Test Proot 13]${NC} Turnip via ZINK Optimized" | tee -a ~/xfce_gpu.log
                 log "Test Proot 13: Turnip ZINK Optimized"
-                proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 dbus-launch --exit-with-session xfce4-session
+                proot-distro login debian --user $username --shared-tmp -- bash -c "export DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 && dbus-launch --exit-with-session xfce4-session"
                 ;;
             14)
                 echo -e "${GREEN}[Test Proot 14]${NC} Turnip via ZINK Aggressive" | tee -a ~/xfce_gpu.log
                 log "Test Proot 14: Turnip ZINK Aggressive"
-                proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform,sysmem ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 dbus-launch --exit-with-session xfce4-session
+                proot-distro login debian --user $username --shared-tmp -- bash -c "export DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform,sysmem ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 && dbus-launch --exit-with-session xfce4-session"
                 ;;
             15)
                 echo -e "${YELLOW}[Test Proot 15]${NC} Disable Vulkan (force software)" | tee -a ~/xfce_gpu.log
