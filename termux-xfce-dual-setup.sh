@@ -291,22 +291,22 @@ get_debian_username() {
     local username=""
     
     if [[ -f "$USERNAME_FILE" ]]; then
-        msg info "Found existing username in: .xfce_debian_username"
+        msg info "Found existing username in: .xfce_debian_username" > /dev/tty
         username=$(tr -d '\n\r\t ' < "$USERNAME_FILE" | xargs)
     elif [[ -d "$PREFIX/var/lib/proot-distro/installed-rootfs/debian" ]]; then
         # Detect existing username from Debian home directory
         username=$(basename "$PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/"* 2>/dev/null | grep -v "^root$" | head -n1)
         if [[ -n "$username" && "$username" != "*" ]]; then
-            msg info "Saving username to: .xfce_debian_username"
+            msg info "Saving username to: .xfce_debian_username" > /dev/tty
             echo "$username" > "$USERNAME_FILE"
         else
             username=$(prompt_for_username)
-            msg info "Saving username to: .xfce_debian_username"
+            msg info "Saving username to: .xfce_debian_username" > /dev/tty
             echo -n "$username" > "$USERNAME_FILE"
         fi
     else
         username=$(prompt_for_username)
-        msg info "Saving username to: .xfce_debian_username"
+        msg info "Saving username to: .xfce_debian_username" > /dev/tty
         echo -n "$username" > "$USERNAME_FILE"
     fi
     
