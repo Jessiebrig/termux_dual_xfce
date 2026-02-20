@@ -778,19 +778,17 @@ install_turnip_driver() {
     
     local deb_file="mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb"
     local temp_deb="/tmp/$deb_file"
-    
-    local branch="$INSTALLER_BRANCH"
+    local release_url="https://github.com/Jessiebrig/termux_dual_xfce/releases/download/turnip-driver-v24.1.0/$deb_file"
     
     echo ""
-    echo "Downloading Turnip driver from branch: $branch"
-    echo "URL: https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$branch/$deb_file"
+    echo "Downloading Turnip driver..."
+    echo "URL: $release_url"
     
-    if ! curl -fL "https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/$branch/$deb_file" -o "$temp_deb" 2>&1; then
+    if ! curl -fL "$release_url" -o "$temp_deb" 2>&1; then
         echo ""
         echo -e "${YELLOW}Download failed. Possible reasons:${NC}"
         echo "  - Network connection issue"
-        echo "  - File not found in repository"
-        echo "  - Branch '$branch' doesn't exist"
+        echo "  - Release not found in repository"
         echo ""
         echo -n "Press Enter to continue..." > /dev/tty
         read < /dev/tty
