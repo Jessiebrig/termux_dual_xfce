@@ -281,10 +281,10 @@ apply_termux_gpu() {
             fi
         fi
     elif [[ "$gpu_choice" == "10" ]]; then
-        echo -e "${YELLOW}[Termux XFCE]${NC} Using Turnip Minimal (no Gallium wrapper)" | tee -a ~/xfce_gpu.log
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using Turnip Minimal (MESA_LOADER_DRIVER_OVERRIDE)" | tee -a ~/xfce_gpu.log
         if [[ "$launch_xfce" == "true" ]]; then
             log "Launching XFCE with Turnip Minimal"
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform xfce4-session &
+            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
         else
             log "Turnip Minimal: No server needed, skipping XFCE launch"
         fi
