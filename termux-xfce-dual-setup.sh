@@ -404,7 +404,7 @@ EOF
 # Update Debian packages
 update_debian_packages() {
     msg info "Running apt update and upgrade..."
-    local apt_output=$(proot-distro login debian --shared-tmp -- bash -c "apt update && apt upgrade -y" 2>&1)
+    local apt_output=$(proot-distro login debian --shared-tmp -- bash -c "apt update && apt upgrade -y -q" 2>&1)
     local apt_status=$?
     check_debian_proot_errors "$apt_output" "$apt_status" "update/upgrade"
 }
@@ -424,25 +424,9 @@ setup_debian_proot() {
     
     msg info "Installing Debian packages (this may take a while)..."
     
-    # Ask for installation mode
-    echo ""
-    echo "Choose apt installation mode:"
-    echo "  1) Silent (clean output, errors only)"
-    echo "  2) Minimal (progress bar only)"
-    echo "  Any other key) Verbose (show all packages and dependencies being installed)"
-    read -n 1 -p "Enter choice: " apt_mode
-    echo ""
-    
-    local apt_flags="-y"
-    if [[ "$apt_mode" == "1" ]]; then
-        apt_flags="-y -qq"
-    elif [[ "$apt_mode" == "2" ]]; then
-        apt_flags="-y -q"
-    fi
-    
     # Try batch install first (fast)
     msg info "Attempting batch install of all packages..."
-    if proot-distro login debian --shared-tmp -- apt install $apt_flags sudo xfce4 xfce4-goodies dbus-x11 firefox-esr chromium htop curl glmark2-x11 conky-std; then
+    if proot-distro login debian --shared-tmp -- apt install -y -q sudo xfce4 xfce4-goodies dbus-x11 firefox-esr chromium htop curl glmark2-x11 conky-std; then
         msg ok "All Debian packages installed successfully"
     else
         msg warn "Batch install failed, trying individual packages..."
