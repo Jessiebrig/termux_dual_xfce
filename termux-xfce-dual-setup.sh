@@ -434,13 +434,30 @@ setup_debian_proot() {
     update_debian_packages
     
     msg info "Installing Debian packages..."
-    for deb_pkg in sudo xfce4 xfce4-goodies dbus-x11 firefox-esr chromium htop curl
+    # Install critical packages first
+    for deb_pkg in sudo dbus-x11 htop curl
     do
         if ! install_deb_pkg "$deb_pkg"; then
             msg error "Failed to install Debian package: $deb_pkg"
             exit 1
         fi
     done
+    
+    # Install XFCE core components (try metapackage first, fallback to components)
+    if ! install_deb_pkg "xfce4"; then
+        msg warn "xfce4 metapackage failed, installing core components..."
+        for xfce_pkg in xfwm4 xfce4-panel xfce4-session xfdesktop4 xfce4-settings thunar
+        do
+            install_deb_pkg "$xfce_pkg" || msg warn "Failed to install $xfce_pkg (continuing...)"
+        done
+    fi
+    
+    # Install XFCE goodies (non-critical)
+    install_deb_pkg "xfce4-goodies" || msg warn "xfce4-goodies failed (non-critical)"
+    
+    # Install browsers (non-critical)
+    install_deb_pkg "firefox-esr" || msg warn "firefox-esr failed (non-critical)"
+    install_deb_pkg "chromium" || msg warn "chromium failed (non-critical)"
     
     # Install glmark2-x11 (X11 variant of glmark2 benchmark tool)
     install_deb_pkg glmark2-x11 || msg warn "Failed to install glmark2-x11 (non-critical)"

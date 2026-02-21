@@ -523,16 +523,12 @@ start_debian_xfce() {
         fi
     elif [[ "$termux_gpu_choice" == "0" ]]; then
         # No Termux GPU - proceed to 2nd prompt
-        echo ""
-        echo -e "${CYAN}Step 2: Proot GPU (driver)${NC}"
         proot_driver_choice=$(prompt_proot_driver "$gpu_server")
         
         # User chose 0 - respect their choice for software rendering
         log "Proot manual selection: $proot_driver_choice"
     else
         # Manual selection (5-9), show prompt
-        echo ""
-        echo "Step 2: Proot GPU (driver)"
         proot_driver_choice=$(prompt_proot_driver "$gpu_server")
         log "start_debian_xfce: Proot driver choice=$proot_driver_choice (manual)"
     fi
