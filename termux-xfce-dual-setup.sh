@@ -404,7 +404,7 @@ EOF
 # Update Debian packages
 update_debian_packages() {
     msg info "Running apt update and upgrade..."
-    local apt_output=$(proot-distro login debian --shared-tmp -- bash -c "apt update && apt upgrade -y -q" 2>&1)
+    local apt_output=$(proot-distro login debian --shared-tmp -- bash -c "apt update && apt upgrade -y" 2>&1)
     local apt_status=$?
     check_debian_proot_errors "$apt_output" "$apt_status" "update/upgrade"
 }
