@@ -422,20 +422,36 @@ setup_debian_proot() {
     
     update_debian_packages
     
-    msg info "Installing Debian packages..."
+    msg info "Installing Debian packages (this may take a while)..."
+    
+    # Ask for installation mode
+    echo ""
+    echo "Choose apt installation mode:"
+    echo "  1) Silent (clean output, errors only)"
+    echo "  2) Minimal (progress bar only)"
+    echo "  Any other key) Verbose (show all packages and dependencies being installed)"
+    read -n 1 -p "Enter choice: " apt_mode
+    echo ""
+    
+    local apt_flags="-y"
+    if [[ "$apt_mode" == "1" ]]; then
+        apt_flags="-y -qq"
+    elif [[ "$apt_mode" == "2" ]]; then
+        apt_flags="-y -q"
+    fi
     
     # Try batch install first (fast)
     msg info "Attempting batch install of all packages..."
-    if proot-distro login debian --shared-tmp -- apt install -y sudo xfce4 xfce4-goodies dbus-x11 firefox-esr chromium htop curl glmark2-x11 conky-std; then
+    if proot-distro login debian --shared-tmp -- apt install $apt_flags sudo xfce4 xfce4-goodies dbus-x11 firefox-esr chromium htop curl glmark2-x11 conky-std; then
         msg ok "All Debian packages installed successfully"
     else
         msg warn "Batch install failed, trying individual packages..."
         
-        # Critical packages
-        for deb_pkg in sudo dbus-x11 htop curl
+        # Essential packages
+        for deb_pkg in sudo dbus-x11
         do
             if ! install_deb_pkg "$deb_pkg"; then
-                msg error "Failed to install Debian package: $deb_pkg"
+                msg error "Failed to install essential package: $deb_pkg"
                 exit 1
             fi
         done
@@ -443,18 +459,17 @@ setup_debian_proot() {
         # XFCE with fallback
         if ! install_deb_pkg "xfce4"; then
             msg warn "xfce4 metapackage failed, installing core components..."
-            for xfce_pkg in xfwm4 xfce4-panel xfce4-session xfdesktop4 xfce4-settings thunar
+            for component in xfwm4 xfce4-panel xfce4-session xfdesktop4 xfce4-settings thunar
             do
-                install_deb_pkg "$xfce_pkg" || msg warn "Failed to install $xfce_pkg (continuing...)"
+                install_deb_pkg "$component" || msg warn "Failed to install $component (continuing...)"
             done
         fi
         
         # Optional packages
-        install_deb_pkg "xfce4-goodies" || msg warn "xfce4-goodies failed (non-critical)"
-        install_deb_pkg "firefox-esr" || msg warn "firefox-esr failed (non-critical)"
-        install_deb_pkg "chromium" || msg warn "chromium failed (non-critical)"
-        install_deb_pkg "glmark2-x11" || msg warn "glmark2-x11 failed (non-critical)"
-        install_deb_pkg "conky-std" || msg warn "conky-std failed (non-critical)"
+        for deb_pkg in xfce4-goodies firefox-esr chromium htop curl glmark2-x11 conky-std
+        do
+            install_deb_pkg "$deb_pkg" || msg warn "$deb_pkg failed (non-critical)"
+        done
     fi
 }
 
