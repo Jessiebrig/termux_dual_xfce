@@ -425,6 +425,7 @@ setup_debian_proot() {
     msg info "Installing Debian packages..."
     
     # Try batch install first (fast)
+    msg info "Attempting batch install of all packages..."
     if proot-distro login debian --shared-tmp -- apt install -y sudo xfce4 xfce4-goodies dbus-x11 firefox-esr chromium htop curl glmark2-x11 conky-std; then
         msg ok "All Debian packages installed successfully"
     else
