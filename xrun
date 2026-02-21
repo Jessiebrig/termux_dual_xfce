@@ -432,7 +432,7 @@ start_xfce() {
     fi
 
     export PULSE_SERVER=127.0.0.1
-    export XDG_RUNTIME_DIR=${TMPDIR}
+    export XDG_RUNTIME_DIR="${TMPDIR:-$PREFIX/tmp}"
     export DISPLAY=:0
     mkdir -p "$XDG_RUNTIME_DIR"
 
