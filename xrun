@@ -98,8 +98,12 @@ prompt_termux_gpu() {
     echo "  9) Custom (enter your own commands)" > /dev/tty
     if [[ "$for_proot" == "true" ]]; then
         echo "" > /dev/tty
-        echo "  --- Proot Test Options (no Termux server) ---" > /dev/tty
-        echo "  10) Test Proot (default, no GPU env vars)" > /dev/tty
+        echo "  --- Proot Test (no Termux server) ---" > /dev/tty
+        echo "  10) Baseline (default proot, no GPU env vars)" > /dev/tty
+    else
+        echo "" > /dev/tty
+        echo "  --- Native Test ---" > /dev/tty
+        echo "  10) Turnip Minimal (no GALLIUM_DRIVER)" > /dev/tty
     fi
     echo "" > /dev/tty
     echo -n "Choice [0-10]: " > /dev/tty
@@ -275,6 +279,14 @@ apply_termux_gpu() {
             else
                 dbus-launch --exit-with-session xfce4-session &
             fi
+        fi
+    elif [[ "$gpu_choice" == "10" ]]; then
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using Turnip Test (MESA_LOADER_DRIVER_OVERRIDE)" | tee -a ~/xfce_gpu.log
+        if [[ "$launch_xfce" == "true" ]]; then
+            log "Launching XFCE with Turnip Test"
+            dbus-launch --exit-with-session env MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform xfce4-session &
+        else
+            log "Turnip Test: No server needed, skipping XFCE launch"
         fi
     else
         echo -e "${YELLOW}[Termux XFCE]${NC} Invalid choice, using software rendering" | tee -a ~/xfce_gpu.log
@@ -453,11 +465,11 @@ start_debian_xfce() {
     username=$(get_debian_username)
     log "start_debian_xfce: Debian username=$username"
     
-    # Handle option 10 (Test Proot - pure software rendering)
+    # Handle option 10 (Baseline Test - default proot launch)
     if [[ "$termux_gpu_choice" == "10" ]]; then
-        log "Test Proot mode: Pure software rendering (no server, no GPU)"
+        log "Baseline Test mode: Default proot launch (no server, no GPU env vars)"
         echo ""
-        echo -e "${YELLOW}[Test Proot]${NC} Software rendering only (no GPU acceleration)"
+        echo -e "${YELLOW}[Baseline Test]${NC} Default proot launch (no GPU env vars)"
         
         if ! pgrep -f "termux-x11" > /dev/null; then
             kill -9 $(pgrep -f "termux.x11") 2>/dev/null
@@ -479,8 +491,8 @@ start_debian_xfce() {
             sleep 1
         fi
         
-        echo -e "${YELLOW}[Debian XFCE]${NC} Software rendering mode (LLVMPIPE)" | tee -a ~/xfce_gpu.log
-        log "Test Proot: Launching proot with software rendering"
+        echo -e "${YELLOW}[Debian XFCE]${NC} Baseline mode (default, likely LLVMPIPE)" | tee -a ~/xfce_gpu.log
+        log "Baseline Test: Launching proot with default settings"
         proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
         return
     fi
