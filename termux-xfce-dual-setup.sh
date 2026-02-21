@@ -187,22 +187,11 @@ install_deb_pkg() {
         return 0
     else
         msg info "Installing Debian package: $pkg_name..."
-        local install_output
-        install_output=$(proot-distro login debian --shared-tmp -- apt install -y "$pkg_name" 2>&1 | tee -a "$LOG_FILE")
-        local exit_code=$?
-        
-        if [[ $exit_code -ne 0 ]]; then
-            if echo "$install_output" | grep -qi "unmet dependencies\|depends:\|broken packages"; then
-                msg error "Failed to install $pkg_name due to unsatisfied dependencies"
-                echo "$install_output" | grep -i "depends:\|unmet" | head -5
-                echo "Try: proot-distro login debian -- apt --fix-broken install"
-                return 1
-            else
-                msg error "Failed to install $pkg_name"
-                return 1
-            fi
+        if proot-distro login debian --shared-tmp -- apt install -y "$pkg_name"; then
+            return 0
+        else
+            return 1
         fi
-        return 0
     fi
 }
 
@@ -434,36 +423,38 @@ setup_debian_proot() {
     update_debian_packages
     
     msg info "Installing Debian packages..."
-    # Install critical packages first
-    for deb_pkg in sudo dbus-x11 htop curl
-    do
-        if ! install_deb_pkg "$deb_pkg"; then
-            msg error "Failed to install Debian package: $deb_pkg"
-            exit 1
-        fi
-    done
     
-    # Install XFCE core components (try metapackage first, fallback to components)
-    if ! install_deb_pkg "xfce4"; then
-        msg warn "xfce4 metapackage failed, installing core components..."
-        for xfce_pkg in xfwm4 xfce4-panel xfce4-session xfdesktop4 xfce4-settings thunar
+    # Try batch install first (fast)
+    if proot-distro login debian --shared-tmp -- apt install -y sudo xfce4 xfce4-goodies dbus-x11 firefox-esr chromium htop curl glmark2-x11 conky-std; then
+        msg ok "All Debian packages installed successfully"
+    else
+        msg warn "Batch install failed, trying individual packages..."
+        
+        # Critical packages
+        for deb_pkg in sudo dbus-x11 htop curl
         do
-            install_deb_pkg "$xfce_pkg" || msg warn "Failed to install $xfce_pkg (continuing...)"
+            if ! install_deb_pkg "$deb_pkg"; then
+                msg error "Failed to install Debian package: $deb_pkg"
+                exit 1
+            fi
         done
+        
+        # XFCE with fallback
+        if ! install_deb_pkg "xfce4"; then
+            msg warn "xfce4 metapackage failed, installing core components..."
+            for xfce_pkg in xfwm4 xfce4-panel xfce4-session xfdesktop4 xfce4-settings thunar
+            do
+                install_deb_pkg "$xfce_pkg" || msg warn "Failed to install $xfce_pkg (continuing...)"
+            done
+        fi
+        
+        # Optional packages
+        install_deb_pkg "xfce4-goodies" || msg warn "xfce4-goodies failed (non-critical)"
+        install_deb_pkg "firefox-esr" || msg warn "firefox-esr failed (non-critical)"
+        install_deb_pkg "chromium" || msg warn "chromium failed (non-critical)"
+        install_deb_pkg "glmark2-x11" || msg warn "glmark2-x11 failed (non-critical)"
+        install_deb_pkg "conky-std" || msg warn "conky-std failed (non-critical)"
     fi
-    
-    # Install XFCE goodies (non-critical)
-    install_deb_pkg "xfce4-goodies" || msg warn "xfce4-goodies failed (non-critical)"
-    
-    # Install browsers (non-critical)
-    install_deb_pkg "firefox-esr" || msg warn "firefox-esr failed (non-critical)"
-    install_deb_pkg "chromium" || msg warn "chromium failed (non-critical)"
-    
-    # Install glmark2-x11 (X11 variant of glmark2 benchmark tool)
-    install_deb_pkg glmark2-x11 || msg warn "Failed to install glmark2-x11 (non-critical)"
-    
-    install_deb_pkg conky-std || msg warn "Failed to install conky-std (non-critical)"
-    msg ok "Debian packages installed successfully"
 }
 
 # Setup Debian user and permissions
