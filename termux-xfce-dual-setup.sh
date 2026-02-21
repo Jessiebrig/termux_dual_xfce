@@ -352,7 +352,7 @@ install_termux_xfce() {
     # Core packages from main/x11-repo (critical)
     for pkg_name in xfce4 xfce4-goodies termux-x11-nightly \
         virglrenderer-android mesa-zink virglrenderer-mesa-zink \
-        vulkan-tools papirus-icon-theme starship fastfetch eza bat htop
+        papirus-icon-theme starship fastfetch eza bat htop
     do
         if ! install_pkg "$pkg_name"; then
             msg error "Failed to install $pkg_name"
