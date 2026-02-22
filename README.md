@@ -124,6 +124,8 @@ System Information:
 
 GPU Benchmark Performance:
 
+![glmark2 Score](Screenshots/Post%20Installation/glmark2%20start.png)
+
 ![glmark2 Score](Screenshots/Post%20Installation/glmark2%20score.png)
 
 Browser Performance:
@@ -160,7 +162,7 @@ xrun gpu
 
 Or select option 5 from the interactive menu.
 
-**Note**: This feature is for research and testing only. For actual GPU acceleration in proot, use VIRGL/ZINK server-client architecture (see documentation).
+**Note**: This feature is for research and testing only. For actual GPU acceleration in proot, use VIRGL/ZINK server-client architecture (see [PROOT_GPU_LIMITATIONS.md](docs/PROOT_GPU_LIMITATIONS.md)).
 
 ## 🙏 Credits & Acknowledgments
 
