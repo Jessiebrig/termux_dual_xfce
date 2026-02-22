@@ -9,6 +9,19 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 #==============================================================================
+# Branch Configuration
+#==============================================================================
+CONFIG_BRANCH="main"
+if [[ -f "$HOME/.xfce_branch" ]]; then
+    CONFIG_BRANCH=$(cat "$HOME/.xfce_branch")
+fi
+
+# Set INSTALLER_BRANCH if empty
+if [[ -z "${INSTALLER_BRANCH:-}" ]]; then
+    export INSTALLER_BRANCH="$CONFIG_BRANCH"
+fi
+
+#==============================================================================
 # Logging Setup
 #==============================================================================
 LOG_FILE="$HOME/xfce_gpu.log"
@@ -29,7 +42,24 @@ fi
 # GPU Configuration Functions - Termux Layer
 #==============================================================================
 
+# Helper function for Turnip environment variables
+get_turnip_env() {
+    local level="$1"
+    case "$level" in
+        basic)
+            echo "MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform MESA_GL_VERSION_OVERRIDE=4.0"
+            ;;
+        optimized)
+            echo "MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0"
+            ;;
+        aggressive)
+            echo "MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform,sysmem ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0"
+            ;;
+    esac
+}
+
 prompt_termux_gpu() {
+    local for_proot="${1:-false}"  # New parameter to detect if called for debian_xfce
     local egl=$(getprop ro.hardware.egl)
     local vulkan=$(getprop ro.hardware.vulkan)
     if [[ "$egl" == "$vulkan" ]]; then
@@ -37,30 +67,56 @@ prompt_termux_gpu() {
     else
         local gpu_info="$egl / $vulkan"
     fi
-    echo -e "${GREEN}[Termux XFCE]${NC} GPU: $gpu_info" | tee -a ~/xfce_gpu.log > /dev/tty
-    echo "" > /dev/tty
+    
     echo "Select GPU acceleration mode:" > /dev/tty
-    echo "  0) Software rendering (no GPU)" > /dev/tty
+    
+    if [[ "$for_proot" == "true" ]]; then
+        echo "  0) No Termux GPU (proceed to proot GPU selection)" > /dev/tty
+    else
+        echo "  0) Software rendering (no GPU)" > /dev/tty
+    fi
+    
     echo "  1) Auto-detect (recommended)" > /dev/tty
     echo "" > /dev/tty
-    echo "  --- Direct GPU (Adreno 6XX/7XX only) ---" > /dev/tty
-    echo "  2) Turnip Basic (direct Vulkan)" > /dev/tty
-    echo "  3) Turnip Optimized (+ threading, descriptor caching)" > /dev/tty
-    echo "  4) Turnip Aggressive (experimental, best for gaming)" > /dev/tty
-    echo "" > /dev/tty
+    
+    # Hide Turnip options for debian_xfce (Turnip doesn't work in proot)
+    if [[ "$for_proot" == "false" ]]; then
+        echo "  --- Direct GPU (Adreno 6XX/7XX only) ---" > /dev/tty
+        echo "  2) Turnip Basic (direct Vulkan)" > /dev/tty
+        echo "  3) Turnip Optimized (+ threading, descriptor caching)" > /dev/tty
+        echo "  4) Turnip Aggressive (experimental, best for gaming)" > /dev/tty
+        echo "" > /dev/tty
+    fi
+    
     echo "  --- Universal (works on all GPUs) ---" > /dev/tty
-    echo "  5) VIRGL Basic (OpenGL via server, safe)" > /dev/tty
-    echo "  6) VIRGL Optimized (+ threading, Mali recommended)" > /dev/tty
-    echo "  7) ZINK Basic (Vulkan via server)" > /dev/tty
-    echo "  8) ZINK Optimized (+ threading, descriptor caching)" > /dev/tty
+    echo "  5) VIRGL Android" > /dev/tty
+    echo "  6) VIRGL Android + ANGLE (Mali optimized)" > /dev/tty
+    echo "  7) ZINK Android" > /dev/tty
+    echo "  8) ZINK EGL Surfaceless (advanced)" > /dev/tty
     echo "" > /dev/tty
     echo "  --- Advanced ---" > /dev/tty
     echo "  9) Custom (enter your own commands)" > /dev/tty
+    if [[ "$for_proot" == "true" ]]; then
+        echo "" > /dev/tty
+        echo "  --- Proot Test (no Termux server) ---" > /dev/tty
+        echo "  10) Baseline (default proot, no GPU env vars)" > /dev/tty
+    else
+        echo "" > /dev/tty
+        echo "  --- Native Test ---" > /dev/tty
+        echo "  10) Turnip Minimal (no GALLIUM_DRIVER)" > /dev/tty
+    fi
     echo "" > /dev/tty
-    echo -n "Choice [0-9]: " > /dev/tty
+    echo -n "Choice [0-10]: " > /dev/tty
     read -r gpu_choice < /dev/tty
     gpu_choice=$(echo "$gpu_choice" | tr -cd '0-9')
     [[ -z "$gpu_choice" ]] && gpu_choice="0"
+    
+    # Validate: reject Turnip options (2-4) if for_proot=true
+    if [[ "$for_proot" == "true" ]] && [[ "$gpu_choice" =~ ^[2-4]$ ]]; then
+        echo -e "${YELLOW}⚠ Turnip doesn't work in proot. Using no GPU server (0)${NC}" > /dev/tty
+        gpu_choice="0"
+    fi
+    
     echo "$gpu_choice"
 }
 
@@ -72,12 +128,12 @@ apply_termux_gpu() {
     log "apply_termux_gpu: gpu_choice='$gpu_choice', launch_xfce='$launch_xfce'"
     
     if [[ "$gpu_choice" == "0" ]]; then
-        echo -e "${YELLOW}[Termux XFCE]${NC} Software rendering mode (No acceleration)" | tee -a ~/xfce_gpu.log
         if [[ "$launch_xfce" == "true" ]]; then
+            echo -e "${YELLOW}[Termux XFCE]${NC} Software rendering mode (No acceleration)" | tee -a ~/xfce_gpu.log
             log "Launching XFCE in software rendering mode"
             dbus-launch --exit-with-session xfce4-session &
         else
-            log "Software rendering: Skipping XFCE launch"
+            log "Option 0: Skipping Termux GPU setup, proceeding to proot GPU selection"
         fi
     elif [[ "$gpu_choice" == "1" ]]; then
         local egl=$(getprop ro.hardware.egl)
@@ -92,26 +148,39 @@ apply_termux_gpu() {
         echo "" | tee -a ~/xfce_gpu.log
         
         if echo "$egl $vulkan" | grep -iq "adreno"; then
-            echo -e "${GREEN}✓ Adreno GPU detected → Using Turnip Aggressive (Option 4)${NC}" | tee -a ~/xfce_gpu.log
-            log "Auto-detect: Adreno detected, redirecting to option 4"
-            apply_termux_gpu "4" "$launch_xfce"
+            if [[ "$launch_xfce" == "false" ]]; then
+                echo -e "${GREEN}✓ Adreno GPU detected → No Termux server (Option 0)${NC}" | tee -a ~/xfce_gpu.log
+                log "Auto-detect: Adreno detected (proot mode), redirecting to option 0"
+                apply_termux_gpu "0" "$launch_xfce"
+            else
+                echo -e "${GREEN}✓ Adreno GPU detected → Using Turnip Aggressive (Option 4)${NC}" | tee -a ~/xfce_gpu.log
+                log "Auto-detect: Adreno detected, redirecting to option 4"
+                apply_termux_gpu "4" "$launch_xfce"
+            fi
             return
         elif echo "$egl $vulkan" | grep -iq "mali"; then
-            echo -e "${GREEN}✓ Mali GPU detected → Using VIRGL Optimized (Option 6)${NC}" | tee -a ~/xfce_gpu.log
+            echo -e "${GREEN}✓ Mali GPU detected → Using VIRGL + ANGLE (Option 6)${NC}" | tee -a ~/xfce_gpu.log
             log "Auto-detect: Mali detected, redirecting to option 6"
             apply_termux_gpu "6" "$launch_xfce"
             return
         else
-            echo -e "${YELLOW}⚠ Unknown GPU → Using VIRGL Basic (Option 5, safe fallback)${NC}" | tee -a ~/xfce_gpu.log
-            log "Auto-detect: Unknown GPU, redirecting to option 5"
-            apply_termux_gpu "5" "$launch_xfce"
+            if [[ "$launch_xfce" == "false" ]]; then
+                echo -e "${YELLOW}⚠ Unknown GPU → No Termux server (Option 0, safe fallback)${NC}" | tee -a ~/xfce_gpu.log
+                log "Auto-detect: Unknown GPU (proot mode), redirecting to option 0"
+                apply_termux_gpu "0" "$launch_xfce"
+            else
+                echo -e "${YELLOW}⚠ Unknown GPU → Using VIRGL Basic (Option 5, safe fallback)${NC}" | tee -a ~/xfce_gpu.log
+                log "Auto-detect: Unknown GPU, redirecting to option 5"
+                apply_termux_gpu "5" "$launch_xfce"
+            fi
             return
         fi
     elif [[ "$gpu_choice" == "2" ]]; then
         echo -e "${YELLOW}[Termux XFCE]${NC} Using Turnip Basic (Adreno 6XX/7XX)" | tee -a ~/xfce_gpu.log
         if [[ "$launch_xfce" == "true" ]]; then
             log "Launching XFCE with Turnip Basic"
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+            local turnip_env=$(get_turnip_env "basic")
+            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink $turnip_env xfce4-session &
         else
             log "Turnip Basic: No server needed, skipping XFCE launch"
         fi
@@ -119,7 +188,8 @@ apply_termux_gpu() {
         echo -e "${YELLOW}[Termux XFCE]${NC} Using Turnip Optimized (Adreno 6XX/7XX)" | tee -a ~/xfce_gpu.log
         if [[ "$launch_xfce" == "true" ]]; then
             log "Launching XFCE with Turnip Optimized"
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+            local turnip_env=$(get_turnip_env "optimized")
+            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink $turnip_env xfce4-session &
         else
             log "Turnip Optimized: No server needed, skipping XFCE launch"
         fi
@@ -127,71 +197,52 @@ apply_termux_gpu() {
         echo -e "${YELLOW}[Termux XFCE]${NC} Using Turnip Aggressive (Adreno 6XX/7XX)" | tee -a ~/xfce_gpu.log
         if [[ "$launch_xfce" == "true" ]]; then
             log "Launching XFCE with Turnip Aggressive"
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform,sysmem ZINK_DESCRIPTORS=lazy mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+            local turnip_env=$(get_turnip_env "aggressive")
+            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink $turnip_env xfce4-session &
         else
             log "Turnip Aggressive: No server needed, skipping XFCE launch"
         fi
     elif [[ "$gpu_choice" == "5" ]]; then
-        echo -e "${GREEN}[Termux XFCE]${NC} Using VIRGL Basic (universal)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            log "Starting VIRGL server (Mali GPU with ANGLE)"
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android --angle-gl &
-        else
-            log "Starting VIRGL server (Non-Mali GPU)"
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
-        fi
+        echo -e "${GREEN}[Termux XFCE]${NC} Using VIRGL Android" | tee -a ~/xfce_gpu.log
+        log "Starting VIRGL Android server"
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android &
         sleep 2
         if [[ "$launch_xfce" == "true" ]]; then
-            log "Launching XFCE session with VIRGL Basic"
+            log "Launching XFCE session with VIRGL"
             dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
         else
             log "Server-only mode: Skipping XFCE launch"
         fi
     elif [[ "$gpu_choice" == "6" ]]; then
-        echo -e "${GREEN}[Termux XFCE]${NC} Using VIRGL Optimized (universal)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            log "Starting VIRGL Optimized server (Mali GPU with ANGLE)"
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true virgl_test_server_android --angle-gl &
-        else
-            log "Starting VIRGL Optimized server (Non-Mali GPU)"
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 mesa_glthread=true virgl_test_server_android &
-        fi
+        echo -e "${GREEN}[Termux XFCE]${NC} Using VIRGL Android + ANGLE" | tee -a ~/xfce_gpu.log
+        log "Starting VIRGL Android + ANGLE server"
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 virgl_test_server_android --angle-gl &
         sleep 2
         if [[ "$launch_xfce" == "true" ]]; then
-            log "Launching XFCE session with VIRGL Optimized"
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+            log "Launching XFCE session with VIRGL"
+            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
         else
             log "Server-only mode: Skipping XFCE launch"
         fi
     elif [[ "$gpu_choice" == "7" ]]; then
-        echo -e "${GREEN}[Termux XFCE]${NC} Using ZINK Basic (universal)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            log "Starting ZINK Basic server (Mali GPU)"
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink virgl_test_server --use-egl-surfaceless --use-gles &
-        else
-            log "Starting ZINK Basic server (Non-Mali GPU)"
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink virgl_test_server_android &
-        fi
+        echo -e "${GREEN}[Termux XFCE]${NC} Using ZINK Android" | tee -a ~/xfce_gpu.log
+        log "Starting ZINK Android server"
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink virgl_test_server_android &
         sleep 2
         if [[ "$launch_xfce" == "true" ]]; then
-            log "Launching XFCE session with ZINK Basic"
+            log "Launching XFCE session with VIRGL"
             dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
         else
             log "Server-only mode: Skipping XFCE launch"
         fi
     elif [[ "$gpu_choice" == "8" ]]; then
-        echo -e "${GREEN}[Termux XFCE]${NC} Using ZINK Optimized (universal)" | tee -a ~/xfce_gpu.log
-        if echo "$gpu_info" | grep -iq "mali"; then
-            log "Starting ZINK Optimized server (Mali GPU)"
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy mesa_glthread=true virgl_test_server --use-egl-surfaceless --use-gles &
-        else
-            log "Starting ZINK Optimized server (Non-Mali GPU)"
-            MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy mesa_glthread=true virgl_test_server_android &
-        fi
+        echo -e "${GREEN}[Termux XFCE]${NC} Using ZINK EGL Surfaceless" | tee -a ~/xfce_gpu.log
+        log "Starting ZINK EGL Surfaceless server"
+        MESA_NO_ERROR=1 MESA_GL_VERSION_OVERRIDE=4.3COMPAT MESA_GLES_VERSION_OVERRIDE=3.2 GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy virgl_test_server --use-egl-surfaceless --use-gles &
         sleep 2
         if [[ "$launch_xfce" == "true" ]]; then
-            log "Launching XFCE session with ZINK Optimized"
-            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe mesa_glthread=true MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+            log "Launching XFCE session with VIRGL"
+            dbus-launch --exit-with-session env GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
         else
             log "Server-only mode: Skipping XFCE launch"
         fi
@@ -229,6 +280,14 @@ apply_termux_gpu() {
                 dbus-launch --exit-with-session xfce4-session &
             fi
         fi
+    elif [[ "$gpu_choice" == "10" ]]; then
+        echo -e "${YELLOW}[Termux XFCE]${NC} Using Turnip Minimal (MESA_LOADER_DRIVER_OVERRIDE)" | tee -a ~/xfce_gpu.log
+        if [[ "$launch_xfce" == "true" ]]; then
+            log "Launching XFCE with Turnip Minimal"
+            dbus-launch --exit-with-session env GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform MESA_GL_VERSION_OVERRIDE=4.0 xfce4-session &
+        else
+            log "Turnip Minimal: No server needed, skipping XFCE launch"
+        fi
     else
         echo -e "${YELLOW}[Termux XFCE]${NC} Invalid choice, using software rendering" | tee -a ~/xfce_gpu.log
         log "Invalid gpu_choice='$gpu_choice', using software rendering"
@@ -246,14 +305,47 @@ apply_termux_gpu() {
 #==============================================================================
 
 prompt_proot_driver() {
-    echo "Select proot driver:" > /dev/tty
-    echo "  0) Software rendering (no GPU)" > /dev/tty
-    echo "  1) ZINK (Vulkan via virpipe)" > /dev/tty
-    echo "  2) VIRGL (OpenGL via virpipe)" > /dev/tty
-    echo "  3) Turnip (Native Vulkan - Experimental)" > /dev/tty
-    echo -n "Choice [0-3]: " > /dev/tty
+    clear
+    local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
+    local gpu_server="${1:-false}"
+    
+    echo "" > /dev/tty
+    echo -e "${CYAN}[Debian Proot]${NC} Select GPU driver:" > /dev/tty
+    echo "  0) Software rendering (LLVMPIPE)" > /dev/tty
+    echo "  1) Auto-detect (recommended)" > /dev/tty
+    
+    if [[ "$gpu_server" == "true" ]]; then
+        echo "" > /dev/tty
+        echo "  --- Universal (works on all GPUs) ---" > /dev/tty
+        echo "  2) VIRGL Basic (OpenGL via GPU server)" > /dev/tty
+        echo "  3) VIRGL Optimized (OpenGL + threading)" > /dev/tty
+        echo "  4) ZINK Basic (Vulkan via GPU server)" > /dev/tty
+        echo "  5) ZINK Optimized (Vulkan + threading)" > /dev/tty
+    else
+        echo "" > /dev/tty
+        echo -e "  ${YELLOW}VIRGL/ZINK unavailable (no GPU server)${NC}" > /dev/tty
+    fi
+    
+    echo "" > /dev/tty
+    echo "  --- Software Rendering (no server needed) ---" > /dev/tty
+    echo "  6) Force LLVMPIPE (ignore any GPU drivers)" > /dev/tty
+    echo "  7) Disable Vulkan + Force LLVMPIPE" > /dev/tty
+    echo "" > /dev/tty
+    echo "  --- Advanced ---" > /dev/tty
+    echo "  9) Custom (enter your own environment variables)" > /dev/tty
+    echo "" > /dev/tty
+    echo -n "Choice [0-9]: " > /dev/tty
     read -r driver_choice < /dev/tty
+    driver_choice=$(echo "$driver_choice" | tr -cd '0-9')
     [[ -z "$driver_choice" ]] && driver_choice="0"
+    
+    # Validate: reject options 2-5 if no GPU server
+    if [[ "$gpu_server" == "false" ]] && [[ "$driver_choice" =~ ^[2-5]$ ]]; then
+        echo -e "${YELLOW}⚠ Options 2-5 require GPU server. Using software rendering (0)${NC}" > /dev/tty
+        driver_choice="0"
+    fi
+    
+    log "prompt_proot_driver: User selected driver choice $driver_choice (gpu_server=$gpu_server)"
     echo "$driver_choice"
 }
 
@@ -261,21 +353,59 @@ apply_proot_driver() {
     local driver_choice="$1"
     local username="$2"
     
-    if [[ "$driver_choice" == "2" ]]; then
-        echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL driver" | tee -a ~/xfce_gpu.log
-        log "Proot: Launching XFCE with VIRGL driver"
+    log "apply_proot_driver: driver_choice='$driver_choice', username='$username'"
+    
+    if [[ "$driver_choice" == "0" ]]; then
+        echo -e "${YELLOW}[Debian XFCE]${NC} Software rendering mode (LLVMPIPE)" | tee -a ~/xfce_gpu.log
+        log "Proot: Launching XFCE in software rendering mode"
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
+    elif [[ "$driver_choice" == "1" ]]; then
+        echo -e "${YELLOW}[Debian XFCE]${NC} Auto-detect mode (should not reach here)" | tee -a ~/xfce_gpu.log
+        log "Proot: Auto-detect fallback to VIRGL Basic"
+        apply_proot_driver "2" "$username"
+    elif [[ "$driver_choice" == "2" ]]; then
+        echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL Basic" | tee -a ~/xfce_gpu.log
+        log "Proot: Launching XFCE with VIRGL Basic"
         proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
     elif [[ "$driver_choice" == "3" ]]; then
-        echo -e "${YELLOW}[Debian XFCE]${NC} Using Turnip driver (Experimental)" | tee -a ~/xfce_gpu.log
-        log "Proot: Launching XFCE with Turnip driver"
-        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform dbus-launch --exit-with-session xfce4-session
-    elif [[ "$driver_choice" == "1" ]]; then
-        echo -e "${GREEN}[Debian XFCE]${NC} Using ZINK driver" | tee -a ~/xfce_gpu.log
-        log "Proot: Launching XFCE with ZINK driver"
+        echo -e "${GREEN}[Debian XFCE]${NC} Using VIRGL Optimized" | tee -a ~/xfce_gpu.log
+        log "Proot: Launching XFCE with VIRGL Optimized"
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=virpipe mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
+    elif [[ "$driver_choice" == "4" ]]; then
+        echo -e "${GREEN}[Debian XFCE]${NC} Using ZINK Basic" | tee -a ~/xfce_gpu.log
+        log "Proot: Launching XFCE with ZINK Basic"
         proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
+    elif [[ "$driver_choice" == "5" ]]; then
+        echo -e "${GREEN}[Debian XFCE]${NC} Using ZINK Optimized" | tee -a ~/xfce_gpu.log
+        log "Proot: Launching XFCE with ZINK Optimized"
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 GALLIUM_DRIVER=zink mesa_glthread=true MESA_NO_ERROR=1 vblank_mode=0 MESA_GL_VERSION_OVERRIDE=4.0 dbus-launch --exit-with-session xfce4-session
+    elif [[ "$driver_choice" == "6" ]]; then
+        echo -e "${YELLOW}[Debian XFCE]${NC} Force LLVMPIPE (software rendering)" | tee -a ~/xfce_gpu.log
+        log "Proot: Launching XFCE with LIBGL_ALWAYS_SOFTWARE=1"
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 LIBGL_ALWAYS_SOFTWARE=1 dbus-launch --exit-with-session xfce4-session
+    elif [[ "$driver_choice" == "7" ]]; then
+        echo -e "${YELLOW}[Debian XFCE]${NC} Disable Vulkan + Force LLVMPIPE" | tee -a ~/xfce_gpu.log
+        log "Proot: Launching XFCE with VK_ICD_FILENAMES=/dev/null LIBGL_ALWAYS_SOFTWARE=1"
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 VK_ICD_FILENAMES=/dev/null LIBGL_ALWAYS_SOFTWARE=1 dbus-launch --exit-with-session xfce4-session
+    elif [[ "$driver_choice" == "9" ]]; then
+        echo -e "${YELLOW}[Debian XFCE]${NC} Custom Mode (Advanced)" | tee -a ~/xfce_gpu.log
+        log "Proot: Custom mode selected"
+        
+        echo "Enter environment variables for Debian XFCE:" > /dev/tty
+        echo "Example: GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0" > /dev/tty
+        echo -n "> " > /dev/tty
+        read -r custom_env < /dev/tty
+        
+        log "Proot custom env: $custom_env"
+        
+        if [[ -n "$custom_env" ]]; then
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 $custom_env dbus-launch --exit-with-session xfce4-session
+        else
+            proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
+        fi
     else
-        echo -e "${YELLOW}[Debian XFCE]${NC} Software rendering mode" | tee -a ~/xfce_gpu.log
-        log "Proot: Launching XFCE in software rendering mode"
+        echo -e "${YELLOW}[Debian XFCE]${NC} Invalid choice, using software rendering" | tee -a ~/xfce_gpu.log
+        log "Proot: Invalid driver_choice='$driver_choice', using software rendering"
         proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
     fi
 }
@@ -286,7 +416,9 @@ apply_proot_driver() {
 
 start_xfce() {
     log "start_xfce: Starting Native Termux XFCE"
-    gpu_choice=$(prompt_termux_gpu)
+    echo -e "${GREEN}[Termux XFCE]${NC} GPU: $(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)" | tee -a ~/xfce_gpu.log
+    echo "" > /dev/tty
+    gpu_choice=$(prompt_termux_gpu "false")  # Show all options including Turnip
     log "start_xfce: User selected GPU mode $gpu_choice"
     
     kill -9 $(pgrep -f "termux.x11") 2>/dev/null
@@ -300,7 +432,7 @@ start_xfce() {
     fi
 
     export PULSE_SERVER=127.0.0.1
-    export XDG_RUNTIME_DIR=${TMPDIR}
+    export XDG_RUNTIME_DIR="${TMPDIR:-$PREFIX/tmp}"
     export DISPLAY=:0
     mkdir -p "$XDG_RUNTIME_DIR"
 
@@ -312,26 +444,106 @@ start_xfce() {
     sleep 1
     
     apply_termux_gpu "$gpu_choice" "true"
-    
-    sleep 3
-    log "start_xfce: Launching xfce4-terminal"
-    DISPLAY=:0 xfce4-terminal -e "bash -c 'fastfetch; exec bash'" &
 }
 
 start_debian_xfce() {
     log "start_debian_xfce: Starting Debian XFCE"
     echo -e "${GREEN}[Debian XFCE]${NC} GPU: $(getprop ro.hardware.egl) $(getprop ro.hardware.vulkan)" | tee -a ~/xfce_gpu.log
     echo ""
-    echo "Step 1: Termux GPU (server)"
-    termux_gpu_choice=$(prompt_termux_gpu)
+    termux_gpu_choice=$(prompt_termux_gpu "true")  # Hide Turnip, change option 0 text
     log "start_debian_xfce: Termux GPU choice=$termux_gpu_choice"
-    echo ""
-    echo "Step 2: Proot GPU (driver)"
-    proot_driver_choice=$(prompt_proot_driver)
-    log "start_debian_xfce: Proot driver choice=$proot_driver_choice"
+    
+    # Check if GPU server will be started (options 5-8)
+    local gpu_server="false"
+    if [[ "$termux_gpu_choice" =~ ^[5-8]$ ]]; then
+        gpu_server="true"
+        log "GPU server will be started (choice $termux_gpu_choice)"
+    else
+        log "No GPU server (choice $termux_gpu_choice)"
+    fi
     
     username=$(get_debian_username)
     log "start_debian_xfce: Debian username=$username"
+    
+    # Handle option 10 (Baseline Test - default proot launch)
+    if [[ "$termux_gpu_choice" == "10" ]]; then
+        log "Baseline Test mode: Default proot launch (no server, no GPU env vars)"
+        echo ""
+        echo -e "${YELLOW}[Baseline Test]${NC} Default proot launch (no GPU env vars)"
+        
+        if ! pgrep -f "termux-x11" > /dev/null; then
+            kill -9 $(pgrep -f "termux.x11") 2>/dev/null
+            
+            if [[ "$(getprop ro.product.manufacturer | tr '[:upper:]' '[:lower:]')" == "samsung" ]]; then
+                LD_PRELOAD=/system/lib64/libskcodec.so pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
+            else
+                pulseaudio --start --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" --exit-idle-time=-1
+            fi
+            
+            export PULSE_SERVER=127.0.0.1
+            export XDG_RUNTIME_DIR=${TMPDIR}
+            mkdir -p "$XDG_RUNTIME_DIR"
+            
+            termux-x11 :0 >/dev/null &
+            sleep 3
+            
+            am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
+            sleep 1
+        fi
+        
+        echo -e "${YELLOW}[Debian XFCE]${NC} Baseline mode (default, likely LLVMPIPE)" | tee -a ~/xfce_gpu.log
+        log "Baseline Test: Launching proot with default settings"
+        proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 dbus-launch --exit-with-session xfce4-session
+        return
+    fi
+    
+    
+    # Show 2nd prompt for proot driver selection
+    if [[ "$termux_gpu_choice" == "1" ]]; then
+        # Termux Auto was selected - show 2nd prompt
+        echo ""
+        proot_driver_choice=$(prompt_proot_driver "$gpu_server")
+        log "Proot selection after Termux auto: $proot_driver_choice"
+        
+        # If user also chose auto (1) in proot, then auto-detect
+        if [[ "$proot_driver_choice" == "1" ]]; then
+            # Check if GPU server is running
+            if [[ "$gpu_server" == "false" ]]; then
+                # No GPU server - use software rendering
+                proot_driver_choice="0"
+                echo -e "${YELLOW}⚠ No GPU server running → Using software rendering (Option 0)${NC}" | tee -a ~/xfce_gpu.log
+                log "Proot auto-detect: No GPU server, using software rendering (0)"
+            else
+                # GPU server running - auto-detect GPU type
+                local egl=$(getprop ro.hardware.egl)
+                local vulkan=$(getprop ro.hardware.vulkan)
+                
+                if echo "$egl $vulkan" | grep -iq "adreno"; then
+                    proot_driver_choice="3"  # VIRGL Optimized for Adreno
+                    echo -e "${GREEN}✓ Adreno detected → Proot using VIRGL Optimized (Option 3)${NC}" | tee -a ~/xfce_gpu.log
+                    log "Proot auto-detect: Adreno, using VIRGL Optimized (3)"
+                elif echo "$egl $vulkan" | grep -iq "mali"; then
+                    proot_driver_choice="3"  # VIRGL Optimized
+                    echo -e "${GREEN}✓ Mali detected → Using VIRGL Optimized (Option 3)${NC}" | tee -a ~/xfce_gpu.log
+                    log "Proot auto-detect: Mali, using VIRGL Optimized (3)"
+                else
+                    proot_driver_choice="2"  # VIRGL Basic
+                    echo -e "${YELLOW}⚠ Unknown GPU → Using VIRGL Basic (Option 2)${NC}" | tee -a ~/xfce_gpu.log
+                    log "Proot auto-detect: Unknown GPU, using VIRGL Basic (2)"
+                fi
+            fi
+        fi
+    elif [[ "$termux_gpu_choice" == "0" ]]; then
+        # No Termux GPU - proceed to 2nd prompt
+        proot_driver_choice=$(prompt_proot_driver "$gpu_server")
+        
+        # User chose 0 - respect their choice for software rendering
+        log "Proot manual selection: $proot_driver_choice"
+    else
+        # Manual selection (5-9), show prompt
+        proot_driver_choice=$(prompt_proot_driver "$gpu_server")
+        log "start_debian_xfce: Proot driver choice=$proot_driver_choice (manual)"
+    fi
     
     if ! pgrep -f "termux-x11" > /dev/null; then
         log "start_debian_xfce: Termux-X11 not running, starting..."
@@ -366,9 +578,89 @@ start_debian_xfce() {
     apply_proot_driver "$proot_driver_choice" "$username"
 }
 
+start_debian() {
+    log "start_debian: Entering Debian proot CLI"
+    username=$(get_debian_username)
+    export DISPLAY=:0
+    proot-distro login debian --user $username --shared-tmp
+}
+
 #==============================================================================
 # Helper Functions
 #==============================================================================
+
+# Get GPU model name (e.g., "Adreno 650")
+get_gpu_model() {
+    # Try multiple methods to get GPU model
+    local gpu_model=""
+    
+    # Method 1: Check ro.soc.model or ro.chipname
+    gpu_model=$(getprop ro.soc.model 2>/dev/null)
+    if [[ -n "$gpu_model" && "$gpu_model" != "" ]]; then
+        echo "$gpu_model"
+        return
+    fi
+    
+    # Method 2: Check ro.hardware.chipname
+    gpu_model=$(getprop ro.hardware.chipname 2>/dev/null)
+    if [[ -n "$gpu_model" && "$gpu_model" != "" ]]; then
+        echo "$gpu_model"
+        return
+    fi
+    
+    # Method 3: Check ro.board.platform
+    gpu_model=$(getprop ro.board.platform 2>/dev/null)
+    if [[ -n "$gpu_model" && "$gpu_model" != "" ]]; then
+        echo "$gpu_model"
+        return
+    fi
+    
+    # Method 4: Parse from /proc/cpuinfo
+    if [[ -f /proc/cpuinfo ]]; then
+        gpu_model=$(grep -i "hardware" /proc/cpuinfo | head -1 | cut -d: -f2 | xargs)
+        if [[ -n "$gpu_model" ]]; then
+            echo "$gpu_model"
+            return
+        fi
+    fi
+    
+    # Method 5: Check vulkaninfo output
+    if command -v vulkaninfo &>/dev/null; then
+        gpu_model=$(vulkaninfo 2>/dev/null | grep -i "deviceName" | head -1 | cut -d= -f2 | xargs)
+        if [[ -n "$gpu_model" ]]; then
+            echo "$gpu_model"
+            return
+        fi
+    fi
+    
+    # Fallback: Use driver name
+    gpu_model=$(getprop ro.hardware.vulkan 2>/dev/null || get_gpu_info)
+    echo "$gpu_model"
+}
+
+# Get GPU info helper
+get_gpu_info() {
+    local egl=$(getprop ro.hardware.egl)
+    local vulkan=$(getprop ro.hardware.vulkan)
+    if [[ "$egl" == "$vulkan" ]]; then
+        echo "$egl"
+    else
+        echo "$egl / $vulkan"
+    fi
+}
+
+# Detect GPU type (adreno, mali, or unknown)
+detect_gpu_type() {
+    local gpu_info=$(get_gpu_info | tr '[:upper:]' '[:lower:]')
+    
+    if [[ "$gpu_info" =~ adreno|freedreno|qcom|qualcomm ]]; then
+        echo "adreno"
+    elif [[ "$gpu_info" =~ mali|panfrost|midgard|bifrost ]]; then
+        echo "mali"
+    else
+        echo "unknown"
+    fi
+}
 
 get_debian_username() {
     basename $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/*
@@ -384,6 +676,216 @@ get_file_date() {
     fi
 }
 
+#==============================================================================
+# GPU Driver Management
+#==============================================================================
+
+manage_gpu_drivers() {
+    while true; do
+        clear
+        echo "=== GPU Driver Management (Experimental) ==="
+        echo ""
+        echo "This section allows testing custom Turnip drivers for Debian proot."
+        echo "Custom drivers may improve GPU performance but compatibility varies by device."
+        echo -e "${YELLOW}⚠ Experimental - may not work on all Adreno GPUs. Use at your own risk.${NC}"
+        echo ""
+        
+        # Show GPU hardware info
+        local gpu_type=$(detect_gpu_type)
+        local gpu_model=$(get_gpu_model)
+        echo "GPU Hardware: $gpu_model ($gpu_type)"
+        
+        # Show Termux Mesa version
+        if pkg list-installed 2>/dev/null | grep -q "^mesa"; then
+            local mesa_version=$(pkg list-installed 2>/dev/null | grep "^mesa" | head -1 | awk '{print $2}')
+            echo "Termux Mesa: $mesa_version"
+        fi
+        
+        # Show Vulkan API version
+        if command -v vulkaninfo &>/dev/null; then
+            local vulkan_version=$(vulkaninfo 2>/dev/null | grep -i "vulkan" | grep -i "version" | head -1 | awk '{print $NF}')
+            if [[ -n "$vulkan_version" ]]; then
+                echo "Vulkan API: $vulkan_version"
+            fi
+        fi
+        
+        echo ""
+        
+        # Show Debian proot driver status (if Adreno)
+        if [[ "$gpu_type" == "adreno" ]]; then
+            echo "Debian Proot Driver Status:"
+            
+            # Check current Mesa version
+            local mesa_ver=$(proot-distro login debian --shared-tmp -- dpkg-query -W -f='${Version}' mesa-vulkan-drivers 2>/dev/null || echo "not installed")
+            
+            # Determine if custom Turnip is installed
+            if [[ "$mesa_ver" == *"24.1.0"* ]]; then
+                echo "├─ mesa-vulkan-drivers: $mesa_ver"
+                echo "└─ Custom Turnip: Installed (held)"
+            elif [[ "$mesa_ver" != "not installed" ]]; then
+                echo "├─ mesa-vulkan-drivers: $mesa_ver"
+                echo "└─ Custom Turnip: Not installed (using default Mesa)"
+            else
+                echo "└─ mesa-vulkan-drivers: not installed"
+            fi
+            echo ""
+        fi
+        
+        # Show options
+        echo "Options:"
+        echo "  1) Install Turnip driver (24.1.0, Adreno optimized)"
+        echo "  2) Restore default Mesa drivers"
+        echo "  0) Back to main menu"
+        echo ""
+        echo -n "Choice: " > /dev/tty
+        read choice < /dev/tty
+        
+        case $choice in
+            1) install_turnip_driver ;;
+            2) restore_default_drivers ;;
+            0) return ;;
+            *)
+                echo ""
+                echo -e "${YELLOW}Invalid option.${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+install_turnip_driver() {
+    clear
+    echo ""
+    echo "=== Install Turnip Driver (Experimental) ==="
+    echo ""
+    echo "Custom Turnip drivers can improve GPU performance in Debian proot."
+    echo "This driver will be pinned to prevent automatic updates."
+    echo -e "${YELLOW}⚠ Experimental - may not work on all Adreno GPUs. Use at your own risk.${NC}"
+    echo ""
+    
+    local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
+    
+    # Check if Debian is installed
+    if [[ ! -d "$DEBIAN_ROOT" ]]; then
+        echo -e "${YELLOW}Error: Debian proot not found.${NC}"
+        echo "Please install Debian first."
+        echo -n "Press Enter to continue..." > /dev/tty
+        read < /dev/tty
+        return
+    fi
+    
+    # Check if already installed
+    local existing_ver=$(proot-distro login debian --shared-tmp -- dpkg-query -W -f='${Version}' mesa-vulkan-drivers 2>/dev/null || echo "")
+    if [[ "$existing_ver" == *"24.1.0"* ]]; then
+        echo "Custom Turnip version already installed: $existing_ver"
+        echo "This will reinstall version 24.1.0"
+        echo ""
+    elif [[ -n "$existing_ver" ]]; then
+        echo "Current Mesa version: $existing_ver"
+        echo "This will replace with custom Turnip 24.1.0"
+        echo ""
+    else
+        echo "No Mesa drivers currently installed."
+        echo "This will install custom Turnip 24.1.0"
+        echo ""
+    fi
+    
+    echo -n "Continue? (y/N): " > /dev/tty
+    read -r confirm < /dev/tty
+    
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "Cancelled."
+        sleep 1
+        return
+    fi
+    
+    local deb_file="mesa-vulkan-kgsl_24.1.0-devel-20240120_arm64.deb"
+    local temp_deb="${TMPDIR}/$deb_file"
+    local release_url="https://github.com/Jessiebrig/termux_dual_xfce/releases/download/turnip-driver-v24.1.0/$deb_file"
+    
+    echo ""
+    echo "Downloading Turnip driver..."
+    echo "URL: $release_url"
+    echo ""
+    
+    # Download with progress and follow redirects
+    curl -L --progress-bar "$release_url" -o "$temp_deb"
+    local curl_exit=$?
+    
+    if [[ $curl_exit -ne 0 ]]; then
+        echo ""
+        echo -e "${YELLOW}Download failed (curl exit code: $curl_exit)${NC}"
+        echo ""
+        echo "Troubleshooting:"
+        echo "  - Exit code 23: Write error (check disk space)"
+        echo "  - Try: pkg install ca-certificates"
+        echo "  - Check internet connection"
+        rm -f "$temp_deb"
+        echo -n "Press Enter to continue..." > /dev/tty
+        read < /dev/tty
+        return
+    fi
+    echo ""
+    
+    # Verify download
+    if [[ ! -f "$temp_deb" ]] || [[ ! -s "$temp_deb" ]]; then
+        echo -e "${YELLOW}Error: Downloaded file is empty or missing.${NC}"
+        rm -f "$temp_deb"
+        echo -n "Press Enter to continue..." > /dev/tty
+        read < /dev/tty
+        return
+    fi
+    
+    echo "Download complete. File size: $(du -h "$temp_deb" | cut -f1)"
+    echo "Installing Turnip driver..."
+    
+    # Install and hold mesa-vulkan-drivers at this version
+    if proot-distro login debian --shared-tmp -- bash -c "dpkg -i --force-depends $temp_deb && apt-mark hold mesa-vulkan-drivers && rm -f $temp_deb" 2>&1; then
+        echo ""
+        echo -e "${GREEN}✓ Turnip driver installed successfully!${NC}"
+        echo "Driver version: 24.1.0 (held from updates)"
+    else
+        echo ""
+        echo -e "${YELLOW}Installation failed. Check error messages above.${NC}"
+        rm -f "$temp_deb"
+    fi
+    
+    echo ""
+    echo -n "Press Enter to continue..." > /dev/tty
+    read < /dev/tty
+}
+
+restore_default_drivers() {
+    clear
+    echo ""
+    echo "=== Restore Default Mesa Drivers ==="
+    echo ""
+    echo "This will remove custom Turnip driver and reinstall default Mesa."
+    echo ""
+    echo -n "Continue? (y/N): " > /dev/tty
+    read -r confirm < /dev/tty
+    
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "Cancelled."
+        sleep 1
+        return
+    fi
+    
+    echo ""
+    echo "Removing custom Turnip driver..."
+    proot-distro login debian --shared-tmp -- bash -c "apt-mark unhold mesa-vulkan-drivers 2>/dev/null; apt install --reinstall -y mesa-vulkan-drivers"
+    
+    echo ""
+    echo -e "${GREEN}✓ Default Mesa drivers restored.${NC}"
+    echo ""
+    echo -n "Press Enter to continue..." > /dev/tty
+    read < /dev/tty
+}
+
+#==============================================================================
+# System Utilities
+#==============================================================================
+
 show_help() {
     if [[ -n "$1" ]]; then
         echo "Unknown command: $1"
@@ -393,44 +895,12 @@ show_help() {
     echo "  xrun                  - Show interactive menu"
     echo "  xrun xfce             - Launch native Termux XFCE"
     echo "  xrun debian_xfce      - Launch Debian XFCE"
-    echo "  xrun debian           - Enter Debian proot CLI"
-    echo "  xrun drun <command>   - Run Debian commands"
-    echo "  xrun dgpu <command>   - Run with hardware acceleration"
-    echo "  xrun dfps <command>   - Run with HW accel + FPS display"
+    echo "  xrun debian           - Enter Debian proot shell (interactive)"
+    echo "  xrun gpu              - Manage GPU drivers (experimental, Adreno only)"
     echo "  xrun kill_termux_x11  - Kill Termux-X11"
     echo "  xrun update           - Run initializer to update scripts"
     echo "  xrun help             - Show this help message"
 }
-
-#==============================================================================
-# Debian Proot Utilities
-#==============================================================================
-
-start_debian() {
-    log "start_debian: Entering Debian proot CLI"
-    username=$(get_debian_username)
-    export DISPLAY=:0
-    proot-distro login debian --user $username --shared-tmp
-}
-
-drun() {
-    username=$(get_debian_username)
-    proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 "$@"
-}
-
-dgpu() {
-    username=$(get_debian_username)
-    proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform "$@"
-}
-
-dfps() {
-    username=$(get_debian_username)
-    proot-distro login debian --user $username --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform GALLIUM_HUD=fps "$@"
-}
-
-#==============================================================================
-# System Utilities
-#==============================================================================
 
 kill_termux_x11() {
     log "kill_termux_x11: Stopping Termux-X11"
@@ -445,7 +915,7 @@ run_initializer() {
     echo ""
     echo -e "${GREEN}Downloading initializer...${NC}"
     
-    if curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o "$tmp"; then
+    if curl -L --progress-bar https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o "$tmp"; then
         chmod +x "$tmp"
         exec bash "$tmp"
     else
@@ -476,18 +946,15 @@ show_menu() {
         echo -e "  ${GREEN}2${NC} - Start Debian XFCE"
         echo "      Launch XFCE desktop in Debian proot"
         echo ""
-        echo -e "  ${GREEN}3${NC} - Start Debian CLI"
-        echo "      Enter Debian proot terminal"
+        echo -e "  ${GREEN}3${NC} - Start Debian Shell"
+        echo "      Enter Debian proot terminal (interactive)"
         echo ""
         echo -e "${CYAN}Utilities:${NC}"
-        echo -e "  ${GREEN}4${NC} - drun <command>"
-        echo "      Run Debian commands from Termux"
-        echo ""
-        echo -e "  ${GREEN}5${NC} - dgpu <command>"
-        echo "      Run with hardware acceleration"
-        echo ""
-        echo -e "  ${GREEN}6${NC} - Kill Termux-X11"
+        echo -e "  ${GREEN}4${NC} - Kill Termux-X11"
         echo "      Stop all X11 sessions"
+        echo ""
+        echo -e "  ${GREEN}5${NC} - GPU Drivers (Experimental)"
+        echo "      Manage Debian Turnip driver (Adreno optimization)"
         echo ""
         echo -e "${CYAN}Setup:${NC}"
         echo -e "  ${GREEN}9${NC} - Check for Updates"
@@ -497,6 +964,7 @@ show_menu() {
         echo ""
         echo -n "Select option [0-9]: " > /dev/tty
         read choice < /dev/tty
+        clear
         
         case $choice in
             1)
@@ -519,31 +987,14 @@ show_menu() {
                 ;;
             4)
                 echo ""
-                echo -n "Enter command to run: " > /dev/tty
-                read cmd < /dev/tty
-                if [[ -n "$cmd" ]]; then
-                    drun $cmd
-                fi
-                echo -n "Press Enter to continue..." > /dev/tty
-                read < /dev/tty
-                ;;
-            5)
-                echo ""
-                echo -n "Enter command to run: " > /dev/tty
-                read cmd < /dev/tty
-                if [[ -n "$cmd" ]]; then
-                    dgpu $cmd
-                fi
-                echo -n "Press Enter to continue..." > /dev/tty
-                read < /dev/tty
-                ;;
-            6)
-                echo ""
                 echo -e "${YELLOW}Killing Termux-X11...${NC}"
                 kill_termux_x11
                 echo "Done."
                 echo -n "Press Enter to continue..." > /dev/tty
                 read < /dev/tty
+                ;;
+            5)
+                manage_gpu_drivers
                 ;;
             9)
                 run_initializer
@@ -577,17 +1028,8 @@ else
         debian)
             start_debian
             ;;
-        drun)
-            shift
-            drun "$@"
-            ;;
-        dgpu)
-            shift
-            dgpu "$@"
-            ;;
-        dfps)
-            shift
-            dfps "$@"
+        gpu)
+            manage_gpu_drivers
             ;;
         kill_termux_x11)
             kill_termux_x11

@@ -1,14 +1,15 @@
 # Termux XFCE Desktop Setup
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v1.2.1-blue.svg)](https://github.com/Jessiebrig/termux_dual_xfce/releases/tag/v1.2.1)
+[![Version](https://img.shields.io/badge/version-v1.2.2-blue.svg)](https://github.com/Jessiebrig/termux_dual_xfce/releases/tag/v1.2.2)
 
 A lightweight script to set up native XFCE desktop environment and Debian proot with XFCE in Termux. Optimized for speed and efficiency with a streamlined installation process.
 
 ## Key Features
+- **No Root Required**: Works on non-rooted Android devices
 - **Dual Desktop Environment**: Native Termux XFCE + Debian proot XFCE
-- **Smart GPU Acceleration**: Auto-detect mode + 10 optimized options for Adreno, Mali, and universal GPUs
-- **Hardware Acceleration**: Turnip (Adreno 6XX/7XX), VIRGL, and ZINK drivers with real-time status logging
+- **Hardware Acceleration**: GPU support with auto-detection (Adreno/Mali), Vulkan drivers, and real-time status logging
+- **Experimental GPU Driver Management**: Custom Turnip driver installation for Adreno GPUs (tested on Xperia 5 II)
 - **Dynamic Branch Selection**: Choose stable or experimental versions for testing new features
 - **Fast Installation**: Streamlined setup with essential packages only
 - **Modern CLI Tools**: Starship prompt, Fastfetch (auto-displays on startup), eza, bat
@@ -18,6 +19,7 @@ A lightweight script to set up native XFCE desktop environment and Debian proot 
 ## Requirements
 
 - **Operating System**: Android 7.0+ (Nougat or higher)
+- **Root Access**: NOT required - works on non-rooted devices
 - **Architecture**: ARM64/aarch64 recommended (32-bit ARM supported but not recommended due to performance limitations)
 - **Storage**: 8GB+ free space recommended
 - **RAM**: 3GB+ recommended
@@ -43,13 +45,18 @@ Once both Termux and Termux-X11 are installed, open Termux and copy-paste this c
 curl -sL https://raw.githubusercontent.com/Jessiebrig/termux_dual_xfce/main/initialize.sh -o initialize.sh && bash initialize.sh
 ```
 
+![Start Installation](Screenshots/Installation/3.%20start%20installation.jpg)
+
 This will fetch available branches and let you choose which version to install (stable or experimental).
+
+![Enter to Proceed](Screenshots/Installation/4.%20Enter%20to%20proceed.jpg)
 
 ## Installation Details
 
 During installation, you'll be prompted to:
-1. Enter a username for the Debian proot environment
-2. Grant storage permissions (if not already granted)
+1. Choose installation type: Both (Native Termux XFCE + Debian proot) or Native Termux XFCE only
+2. Enter a username for the Debian proot environment (if installing both)
+3. Grant storage permissions (if not already granted)
 
 Installation logs are saved to `~/xfce_install.log` for troubleshooting.
 
@@ -57,16 +64,19 @@ Installation logs are saved to `~/xfce_install.log` for troubleshooting.
 
 ### Native Termux Environment
 - XFCE4 desktop with goodies and plugins
-- Firefox browser
+- Firefox and Chromium browsers
 - Starship prompt, Fastfetch, eza, bat, htop
 - Papirus icon theme
 - Hardware acceleration (ZINK, VIRGL, Turnip)
+- glmark2 OpenGL benchmark tool
 
 ### Debian Proot Environment
 - XFCE4 desktop with goodies
-- Conky system monitor
+- Firefox ESR and Chromium browsers
+- Conky system monitor (conky-std)
 - Starship prompt, eza, bat, fastfetch, htop
 - Hardware acceleration (ZINK, VIRGL, Turnip)
+- glmark2-x11 OpenGL benchmark tool
 - Sudo configured for passwordless access
 
 ## Available Commands
@@ -79,20 +89,80 @@ xrun
 
 Interactive menu with numbered options for all commands below.
 
+![Main Menu](Screenshots/Installation/8.%20Main%20Menu.jpg)
+
 ### Desktop Launchers
 - `xrun xfce` - Launch native Termux XFCE desktop
-- `xrun debian_xfce` - Launch Debian proot XFCE desktop
-- `xrun debian` - Enter Debian proot terminal (display pre-configured for GUI apps)
 
-### Proot Utilities
-- `xrun drun <command>` - Run Debian commands from Termux without entering proot shell
-- `xrun dgpu <command>` - Run Debian apps with hardware acceleration enabled
-- `xrun dfps <command>` - Run Debian with hardware acceleration and FPS overlay
+![Hardware Acceleration](Screenshots/Installation/9.%20Hardware%20Acceleration.jpg)
+
+- `xrun debian_xfce` - Launch Debian proot XFCE desktop
+- `xrun debian` - Enter Debian proot shell (interactive, DISPLAY pre-configured)
 
 ### System Tools
+- `xrun gpu` - Manage GPU drivers (experimental, Adreno optimization)
 - `xrun kill_termux_x11` - Stop all Termux-X11 sessions
 - `xrun update` - Run initializer to update xrun and setup scripts
-- `~/xfce_gpu.log` - View GPU acceleration status logs for both environments
+
+### Log Files
+- `~/xfce_gpu.log` - GPU acceleration status and runtime logs
+- `~/xfce_install.log` - Installation summary log
+- `~/xfce_install_full.txt` - Full installation output (optional, saved on request)
+
+## Hardware Acceleration Performance
+
+**Tested Configuration:**
+- **Device**: Sony Xperia 5 II (XQ-AS42)
+- **Chipset**: Qualcomm Snapdragon 865
+- **GPU**: Adreno 650
+
+**Native Termux XFCE with Turnip Hardware Acceleration:**
+
+System Information:
+
+![Fastfetch + htop](Screenshots/Post%20Installation/fastfetch+htop.png)
+
+GPU Benchmark Performance:
+
+![glmark2 Score](Screenshots/Post%20Installation/glmark2%20start.png)
+
+![glmark2 Score](Screenshots/Post%20Installation/glmark2%20score.png)
+
+Browser Performance:
+
+![Firefox](Screenshots/Post%20Installation/Mozilla.png)
+
+![Firefox YouTube](Screenshots/Post%20Installation/Mozilla%20YT.png)
+
+![Chromium GPU](Screenshots/Post%20Installation/Chromium%20GPU.png)
+
+## GPU Driver Management (Experimental)
+
+⚠️ **Research & Testing Area**
+
+This section allows testing custom Turnip drivers in Debian proot environment.
+
+**Current Status (as of February 22, 2026):**
+- Custom Turnip drivers can be installed in Debian proot, but provide **no significant performance improvement**
+- Based on research with available drivers, Turnip requires direct access to the GPU kernel device which proot cannot provide
+- Benchmarks may show high scores using glmark2, but real applications cannot utilize the GPU acceleration
+- This is a testing area for future driver versions that may resolve these limitations
+- See [PROOT_GPU_LIMITATIONS.md](docs/PROOT_GPU_LIMITATIONS.md) for detailed technical analysis
+
+### Features
+- Install custom Turnip drivers for testing purposes
+- Restore default Mesa drivers
+- Real-time driver status monitoring
+- Additional driver versions may be added in the future
+
+### Usage
+```bash
+xrun gpu
+```
+
+Or select option 5 from the interactive menu.
+
+**Note**: This feature is for research and testing only. For actual GPU acceleration in proot, use VIRGL/ZINK server-client architecture.
 
 ## 🙏 Credits & Acknowledgments
 
