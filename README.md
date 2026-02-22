@@ -162,7 +162,7 @@ xrun gpu
 
 Or select option 5 from the interactive menu.
 
-**Note**: This feature is for research and testing only. For actual GPU acceleration in proot, use VIRGL/ZINK server-client architecture (see [PROOT_GPU_LIMITATIONS.md](docs/PROOT_GPU_LIMITATIONS.md)).
+**Note**: This feature is for research and testing only. For actual GPU acceleration in proot, use VIRGL/ZINK server-client architecture.
 
 ## 🙏 Credits & Acknowledgments
 
