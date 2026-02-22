@@ -62,7 +62,7 @@ retry_installation() {
     if [[ "$response" =~ ^[Yy]$ ]]; then
         echo "" > /dev/tty
         msg info "Restarting installation..."
-        exec "${BASH_SOURCE[0]}" "${@:-}"
+        exec bash "${BASH_SOURCE[0]}" "$@"
     fi
 }
 
