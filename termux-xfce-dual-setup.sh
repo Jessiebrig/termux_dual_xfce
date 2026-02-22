@@ -395,11 +395,6 @@ setup_termux_xfce_config() {
     msg info "Creating directory structure..."
     mkdir -p "$HOME"/{Desktop,Downloads,.config/xfce4/xfconf/xfce-perchannel-xml,.config/autostart}
     
-    msg info "Initializing XFCE settings..."
-    export DISPLAY=:0
-    xfconf-query -c xfce4-session -p /startup/compat/LaunchGNOME -n -t bool -s false 2>&1 | tee -a "$LOG_FILE" || msg warn "xfconf-query LaunchGNOME failed (non-critical)"
-    xfconf-query -c xfce4-session -p /general/FailsafeSessionName -n -t string -s "Failsafe" 2>&1 | tee -a "$LOG_FILE" || msg warn "xfconf-query FailsafeSessionName failed (non-critical)"
-    
     create_autostart "$HOME/.config/autostart" "Terminal" "xfce4-terminal"
     
     msg info "Configuring shell aliases..."

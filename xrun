@@ -683,7 +683,11 @@ get_file_date() {
 manage_gpu_drivers() {
     while true; do
         clear
-        echo "=== GPU Driver Management ==="
+        echo "=== GPU Driver Management (Experimental) ==="
+        echo ""
+        echo "This section allows testing custom Turnip drivers for Debian proot."
+        echo "Custom drivers may improve GPU performance but compatibility varies by device."
+        echo -e "${YELLOW}⚠ Experimental - may not work on all Adreno GPUs. Use at your own risk.${NC}"
         echo ""
         
         # Show GPU hardware info
@@ -731,8 +735,6 @@ manage_gpu_drivers() {
         echo "Options:"
         echo "  1) Install Turnip driver (24.1.0, Adreno optimized)"
         echo "  2) Restore default Mesa drivers"
-        echo "  3) Run GPU benchmark (glmark2)"
-        echo "  9) Debug GPU detection"
         echo "  0) Back to main menu"
         echo ""
         echo -n "Choice: " > /dev/tty
@@ -741,8 +743,6 @@ manage_gpu_drivers() {
         case $choice in
             1) install_turnip_driver ;;
             2) restore_default_drivers ;;
-            3) run_benchmark ;;
-            9) debug_gpu_detection ;;
             0) return ;;
             *)
                 echo ""
@@ -756,10 +756,11 @@ manage_gpu_drivers() {
 install_turnip_driver() {
     clear
     echo ""
-    echo "=== Install Turnip Driver ==="
+    echo "=== Install Turnip Driver (Experimental) ==="
     echo ""
-    echo "This will install custom Turnip driver (24.1.0) for Adreno GPUs."
-    echo "The driver will be pinned to prevent automatic updates."
+    echo "Custom Turnip drivers can improve GPU performance in Debian proot."
+    echo "This driver will be pinned to prevent automatic updates."
+    echo -e "${YELLOW}⚠ Experimental - may not work on all Adreno GPUs. Use at your own risk.${NC}"
     echo ""
     
     local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
@@ -877,116 +878,6 @@ restore_default_drivers() {
     echo ""
     echo -e "${GREEN}✓ Default Mesa drivers restored.${NC}"
     echo ""
-    echo -n "Press Enter to continue..." > /dev/tty
-    read < /dev/tty
-}
-
-run_benchmark() {
-    echo ""
-    echo "=== GPU Benchmark (Debian Proot) ==="
-    echo ""
-    
-    # Check if glmark2-x11 is installed
-    if ! proot-distro login debian --shared-tmp -- command -v glmark2 &>/dev/null; then
-        echo "glmark2-x11 not installed in Debian proot."
-        echo -n "Install now? (y/N): " > /dev/tty
-        read -r install_choice < /dev/tty
-        
-        if [[ "$install_choice" =~ ^[Yy]$ ]]; then
-            echo "Installing glmark2-x11..."
-            proot-distro login debian --shared-tmp -- apt install -y glmark2-x11
-        else
-            echo "Benchmark cancelled."
-            echo -n "Press Enter to continue..." > /dev/tty
-            read < /dev/tty
-            return
-        fi
-    fi
-    
-    echo "Select benchmark mode:"
-    echo "  1) Default (quick test)"
-    echo "  2) With Turnip env vars (if Turnip installed)"
-    echo "  0) Cancel"
-    echo ""
-    echo -n "Choice: " > /dev/tty
-    read bench_choice < /dev/tty
-    
-    case $bench_choice in
-        1)
-            echo ""
-            echo "Running glmark2 in Debian proot..."
-            echo "This will take about 30-60 seconds."
-            echo ""
-            proot-distro login debian --shared-tmp -- env DISPLAY=:0 glmark2
-            ;;
-        2)
-            local DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
-            if [[ ! -f "$DEBIAN_ROOT/usr/lib/aarch64-linux-gnu/libvulkan_freedreno.so" ]]; then
-                echo ""
-                echo "Turnip driver not installed. Using default mode."
-                sleep 2
-                proot-distro login debian --shared-tmp -- env DISPLAY=:0 glmark2
-            else
-                echo ""
-                echo "Running glmark2 with Turnip optimizations..."
-                echo "This will take about 30-60 seconds."
-                echo ""
-                proot-distro login debian --shared-tmp -- env DISPLAY=:0 MESA_LOADER_DRIVER_OVERRIDE=zink TU_DEBUG=noconform glmark2
-            fi
-            ;;
-        0)
-            return
-            ;;
-    esac
-    
-    echo ""
-    echo -n "Press Enter to continue..." > /dev/tty
-    read < /dev/tty
-}
-
-debug_gpu_detection() {
-    echo ""
-    echo "=== GPU Detection Debug ==="
-    echo ""
-    echo "Testing all detection methods:"
-    echo ""
-    
-    echo "Method 1 - ro.soc.model:"
-    getprop ro.soc.model 2>/dev/null || echo "  (not available)"
-    echo ""
-    
-    echo "Method 2 - ro.hardware.chipname:"
-    getprop ro.hardware.chipname 2>/dev/null || echo "  (not available)"
-    echo ""
-    
-    echo "Method 3 - ro.board.platform:"
-    getprop ro.board.platform 2>/dev/null || echo "  (not available)"
-    echo ""
-    
-    echo "Method 4 - /proc/cpuinfo (Hardware line):"
-    grep -i "hardware" /proc/cpuinfo 2>/dev/null | head -1 || echo "  (not available)"
-    echo ""
-    
-    echo "Method 5 - vulkaninfo deviceName:"
-    if command -v vulkaninfo &>/dev/null; then
-        vulkaninfo 2>/dev/null | grep -i "deviceName" | head -1 || echo "  (not available)"
-    else
-        echo "  (vulkaninfo not installed)"
-    fi
-    echo ""
-    
-    echo "Fallback - ro.hardware.vulkan:"
-    getprop ro.hardware.vulkan 2>/dev/null || echo "  (not available)"
-    echo ""
-    
-    echo "Fallback - ro.hardware.egl:"
-    getprop ro.hardware.egl 2>/dev/null || echo "  (not available)"
-    echo ""
-    
-    echo "Current result from get_gpu_model():"
-    echo "  $(get_gpu_model)"
-    echo ""
-    
     echo -n "Press Enter to continue..." > /dev/tty
     read < /dev/tty
 }
