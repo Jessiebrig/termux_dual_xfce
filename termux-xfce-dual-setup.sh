@@ -54,6 +54,18 @@ show_troubleshooting() {
     echo ""
 }
 
+# Retry installation prompt
+retry_installation() {
+    echo "" > /dev/tty
+    echo -n "Retry installation? (y/N): " > /dev/tty
+    read -r response < /dev/tty
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        echo "" > /dev/tty
+        msg info "Restarting installation..."
+        exec "${BASH_SOURCE[0]}" "${@:-}"
+    fi
+}
+
 # Cleanup on exit
 cleanup() {
     local exit_code=$?
@@ -61,7 +73,9 @@ cleanup() {
         # Add quit instruction at top and bottom
         { echo "=== Press 'q' to close this log viewer ==="; echo ""; cat "$LOG_FILE"; } > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
         echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE"
-        msg error "Installation failed."
+        msg error "Installation failed. Error code: $exit_code"
+        show_troubleshooting
+        retry_installation "${@:-}"
         echo ""
         echo -n "View log file? (y/N): " > /dev/tty
         read -r response < /dev/tty
