@@ -52,6 +52,7 @@ show_troubleshooting() {
     echo "     pkg install <package-name>"
     echo "     Then re-run this script (it will skip installed packages)"
     echo ""
+    retry_installation "${@:-}"
 }
 
 # Retry installation prompt
@@ -62,7 +63,11 @@ retry_installation() {
     if [[ "$response" =~ ^[Yy]$ ]]; then
         echo "" > /dev/tty
         msg info "Restarting installation..."
-        exec bash "${BASH_SOURCE[0]}" "$@"
+        if command -v script &>/dev/null && [[ "${1:-}" != "--no-script" ]]; then
+            exec script -q -c "bash '${BASH_SOURCE[0]}' --no-script" "$FULL_OUTPUT_FILE"
+        else
+            exec bash "${BASH_SOURCE[0]}" "$@"
+        fi
     fi
 }
 
@@ -74,7 +79,6 @@ cleanup() {
         echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE"
         msg error "Installation failed. Error code: $exit_code"
         show_troubleshooting
-        retry_installation "${@:-}"
         echo ""
         echo -n "View log file? (y/N): " > /dev/tty
         read -r response < /dev/tty
