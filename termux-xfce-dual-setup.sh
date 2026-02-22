@@ -59,7 +59,11 @@ retry_installation() {
     echo "" > /dev/tty
     echo -n "Retry installation? (y/N): " > /dev/tty
     read -r response < /dev/tty
-    [[ "$response" =~ ^[Yy]$ ]] && return 0 || return 1
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        echo "" > /dev/tty
+        msg info "Restarting installation..."
+        exec bash "${BASH_SOURCE[0]}" "$@"
+    fi
 }
 
 # Cleanup on exit
@@ -70,9 +74,7 @@ cleanup() {
         echo "=== Press 'q' to close this log viewer ===" >> "$LOG_FILE"
         msg error "Installation failed. Error code: $exit_code"
         show_troubleshooting
-        if retry_installation; then
-            return 0
-        fi
+        retry_installation "${@:-}"
         echo ""
         echo -n "View log file? (y/N): " > /dev/tty
         read -r response < /dev/tty
@@ -757,20 +759,9 @@ main() {
 
 # Check if script command is available and wrap execution
 if command -v script &>/dev/null && [[ "${1:-}" != "--no-script" ]]; then
+    # Set and export FULL_OUTPUT_FILE so it's available in the sub-shell
     export FULL_OUTPUT_FILE="${FULL_OUTPUT_FILE:-$HOME/.xfce_install_full_temp.txt}"
-    while true; do
-        set +e
-        script -q -c "bash '${BASH_SOURCE[0]}' --no-script" "$FULL_OUTPUT_FILE"
-        exit_code=$?
-        set -e
-        [[ $exit_code -eq 0 ]] && break
-    done
+    script -q -c "bash '${BASH_SOURCE[0]}' --no-script" "$FULL_OUTPUT_FILE"
 else
-    while true; do
-        set +e
-        main "${@:-}"
-        exit_code=$?
-        set -e
-        [[ $exit_code -eq 0 ]] && break
-    done
+    main "${@:-}"
 fi
