@@ -333,13 +333,13 @@ setup_storage() {
 # Upgrade Termux packages
 upgrade_packages() {
     msg info "Updating and upgrading packages..."
-    if ! pkg upgrade -y -o Dpkg::Options::="--force-confold"; then
+    if ! pkg upgrade -y -q -o Dpkg::Options::="--force-confold"; then
         msg warn "Upgrade failed, please select a mirror..."
         termux-change-repo
         sleep 2
         rm -f "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" 2>/dev/null
         msg info "Retrying package upgrade..."
-        if ! pkg upgrade -y -o Dpkg::Options::="--force-confold"; then
+        if ! pkg upgrade -y -q -o Dpkg::Options::="--force-confold"; then
             msg error "Failed to upgrade packages after changing mirror"
             show_troubleshooting
             exit 1
