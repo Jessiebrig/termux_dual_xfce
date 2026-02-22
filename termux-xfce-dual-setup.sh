@@ -233,24 +233,24 @@ install_optional_vulkan_drivers() {
     msg info "Installing optional GPU drivers..."
     
     # Check and install vulkan-loader-android
-    if pkg install --dry-run vulkan-loader-android 2>/dev/null | grep -q "vulkan-loader-android"; then
-        pkg install -y vulkan-loader-android 2>&1 | tee -a "$LOG_FILE" && msg ok "vulkan-loader-android: installed"
+    if pkg install -y --dry-run vulkan-loader-android 2>&1 | grep -q "unmet dependencies\|not going to be installed"; then
+        msg warn "vulkan-loader-android: not compatible with this device"
     else
-        log "vulkan-loader-android: not available in repository, using system default"
+        pkg install -y vulkan-loader-android 2>&1 | tee -a "$LOG_FILE" && msg ok "vulkan-loader-android: installed" || msg warn "vulkan-loader-android: installation failed"
     fi
     
     # Check and install mesa-vulkan-icd-freedreno-dri3 (Adreno)
-    if pkg install --dry-run mesa-vulkan-icd-freedreno-dri3 2>/dev/null | grep -q "mesa-vulkan-icd-freedreno-dri3"; then
-        pkg install -y mesa-vulkan-icd-freedreno-dri3 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-freedreno-dri3: installed (Adreno)"
+    if pkg install -y --dry-run mesa-vulkan-icd-freedreno-dri3 2>&1 | grep -q "unmet dependencies\|not going to be installed"; then
+        msg warn "mesa-vulkan-icd-freedreno-dri3: not compatible with this device"
     else
-        log "mesa-vulkan-icd-freedreno-dri3: not available in repository, using system default"
+        pkg install -y mesa-vulkan-icd-freedreno-dri3 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-freedreno-dri3: installed (Adreno)" || msg warn "mesa-vulkan-icd-freedreno-dri3: installation failed"
     fi
     
     # Check and install mesa-vulkan-icd-panfrost (Mali)
-    if pkg install --dry-run mesa-vulkan-icd-panfrost 2>/dev/null | grep -q "mesa-vulkan-icd-panfrost"; then
-        pkg install -y mesa-vulkan-icd-panfrost 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-panfrost: installed (Mali)"
+    if pkg install -y --dry-run mesa-vulkan-icd-panfrost 2>&1 | grep -q "unmet dependencies\|not going to be installed"; then
+        msg warn "mesa-vulkan-icd-panfrost: not compatible with this device"
     else
-        log "mesa-vulkan-icd-panfrost: not available in repository, using system default"
+        pkg install -y mesa-vulkan-icd-panfrost 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-panfrost: installed (Mali)" || msg warn "mesa-vulkan-icd-panfrost: installation failed"
     fi
 }
 
@@ -669,19 +669,28 @@ main() {
     
     verify_system
     
-    msg info "This will install:"
-    echo "  • Native Termux XFCE desktop"
-    echo "  • Debian proot with XFCE"
-    echo "  • Hardware acceleration support"
+    echo "Installation options:"
+    echo "  [Enter] Native Termux XFCE + Debian proot XFCE (default)"
+    echo "  [1]     Native Termux XFCE only"
     echo ""
-    echo "Press Enter to continue or Ctrl+C to cancel..."
-    read -r
+    echo -n "Choose option or Ctrl+C to cancel: "
+    read -r install_choice
+    echo ""
     
-    # Get username
-    local username
-    username=$(get_debian_username)
-    echo ""
-    msg info "Debian username: $username"
+    # Determine installation mode
+    local install_proot=true
+    if [[ "$install_choice" == "1" ]]; then
+        install_proot=false
+    fi
+    
+    # Get username only if installing proot
+    local username=""
+    if [[ "$install_proot" == true ]]; then
+        username=$(get_debian_username)
+        echo ""
+        msg info "Debian username: $username"
+    fi
+
     
     # Clear any stale locks
     rm -f "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" 2>/dev/null
@@ -695,14 +704,18 @@ main() {
     msg ok "XFCE desktop environment installed successfully"
     setup_termux_xfce_config
     
-    # Setup Debian environment
-    setup_debian_proot
-    setup_debian_user "$username"
-    setup_debian_xfce_config "$username"
-    install_debian_user_tools
-    
-    # Final update check
-    update_debian_packages
+    # Setup Debian environment (only if selected)
+    if [[ "$install_proot" == true ]]; then
+        setup_debian_proot
+        setup_debian_user "$username"
+        setup_debian_xfce_config "$username"
+        install_debian_user_tools
+        
+        # Final post-installation update check
+        echo ""
+        msg info "Running post-installation update check..."
+        update_debian_packages
+    fi
     
     # Completion message
     echo ""
