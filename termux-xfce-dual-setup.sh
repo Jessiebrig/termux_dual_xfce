@@ -228,29 +228,29 @@ Name=$name
 EOF
 }
 
-# Install optional Vulkan drivers (device-specific)
+# Install optional Vulkan drivers (device-specific, non-critical)
 install_optional_vulkan_drivers() {
-    msg info "Installing optional GPU drivers..."
+    msg info "Installing optional GPU drivers (non-critical)..."
     
     # Check and install vulkan-loader-android
     if pkg install -y --dry-run vulkan-loader-android 2>&1 | grep -q "unmet dependencies\|not going to be installed"; then
         msg warn "vulkan-loader-android: not compatible with this device"
     else
-        pkg install -y vulkan-loader-android 2>&1 | tee -a "$LOG_FILE" && msg ok "vulkan-loader-android: installed" || msg warn "vulkan-loader-android: installation failed"
+        pkg install -y vulkan-loader-android 2>&1 | tee -a "$LOG_FILE" && msg ok "vulkan-loader-android: installed" || msg warn "vulkan-loader-android: installation failed (non-critical)"
     fi
     
     # Check and install mesa-vulkan-icd-freedreno-dri3 (Adreno)
     if pkg install -y --dry-run mesa-vulkan-icd-freedreno-dri3 2>&1 | grep -q "unmet dependencies\|not going to be installed"; then
         msg warn "mesa-vulkan-icd-freedreno-dri3: not compatible with this device"
     else
-        pkg install -y mesa-vulkan-icd-freedreno-dri3 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-freedreno-dri3: installed (Adreno)" || msg warn "mesa-vulkan-icd-freedreno-dri3: installation failed"
+        pkg install -y mesa-vulkan-icd-freedreno-dri3 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-freedreno-dri3: installed (Adreno)" || msg warn "mesa-vulkan-icd-freedreno-dri3: installation failed (non-critical)"
     fi
     
     # Check and install mesa-vulkan-icd-panfrost (Mali)
     if pkg install -y --dry-run mesa-vulkan-icd-panfrost 2>&1 | grep -q "unmet dependencies\|not going to be installed"; then
         msg warn "mesa-vulkan-icd-panfrost: not compatible with this device"
     else
-        pkg install -y mesa-vulkan-icd-panfrost 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-panfrost: installed (Mali)" || msg warn "mesa-vulkan-icd-panfrost: installation failed"
+        pkg install -y mesa-vulkan-icd-panfrost 2>&1 | tee -a "$LOG_FILE" && msg ok "mesa-vulkan-icd-panfrost: installed (Mali)" || msg warn "mesa-vulkan-icd-panfrost: installation failed (non-critical)"
     fi
 }
 
